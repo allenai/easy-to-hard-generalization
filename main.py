@@ -1113,6 +1113,8 @@ if __name__ == '__main__':
         args.n_dev = 0
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)
+    if not os.path.exists(args.data_dir):
+        os.mkdir(args.data_dir)
 
     # set probing configs
     args.short_model_name = short_model_name = utils.shorten_model_name(args.model)
