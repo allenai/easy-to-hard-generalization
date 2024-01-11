@@ -1,0 +1,1713 @@
+---
+title: "Analysis"
+output: pdf_document
+date: ""
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(tools)
+library(gridExtra)
+library(grid)
+library(lemon)
+library(reshape2)
+library(extrafont)
+loadfonts()
+```
+
+# Analysis of all datasets (final plots)
+
+```{r load all datasets}
+
+all_to_all_data <- read_csv('data/ai2_arc_all_to_all_table_models-1_LC-0_prompts-1_boots-5.csv') %>%
+  mutate(dataname='ARC')
+all_to_all_data <- rbind(all_to_all_data, read_csv('data/mmlu_STEM-5_all_to_all_table_models-1_LC-0_prompts-1_boots-5.csv') %>%
+  mutate(dataname='MMLU-STEM-5'))
+all_to_all_data <- rbind(all_to_all_data, read_csv('data/strategy-qa_all_to_all_table_models-1_LC-0_prompts-1_boots-5.csv') %>%
+  mutate(dataname='StrategyQA'))
+all_to_all_data <- rbind(all_to_all_data, read_csv('data/gsm8k_main_all_to_all_table_models-1_LC-0_prompts-1_boots-5.csv') %>%
+  mutate(dataname='GSM8k'))
+
+boot_avg_data <- read_csv('data/ai2_arc_get_population_table_models-3_LC-0_prompts-1_boots-5.csv') %>%
+  mutate(dataname='ARC')
+boot_avg_data <- rbind(boot_avg_data, read_csv('data/mmlu_STEM-5_get_population_table_models-3_LC-0_prompts-1_boots-5.csv') %>%
+  mutate(dataname='MMLU-STEM-5'))
+boot_avg_data <- rbind(boot_avg_data, read_csv('data/strategy-qa_get_population_table_models-3_LC-0_prompts-1_boots-5.csv') %>%
+  mutate(dataname='StrategyQA'))
+boot_avg_data <- rbind(boot_avg_data, read_csv('data/gsm8k_main_get_population_table_models-3_LC-0_prompts-1_boots-5.csv') %>%
+  mutate(dataname='GSM8k'))
+
+LC_data <- read_csv('data/ai2_arc_get_population_table_models-1_LC-1_prompts-1_boots-10.csv') %>%
+  mutate(dataname='ARC')
+LC_data <- rbind(LC_data, read_csv('data/mmlu_STEM-5_get_population_table_models-1_LC-1_prompts-1_boots-10.csv') %>%
+  mutate(dataname='MMLU-STEM-5'))
+LC_data <- rbind(LC_data, read_csv('data/strategy-qa_get_population_table_models-1_LC-1_prompts-1_boots-5.csv') %>%
+  mutate(dataname='StrategyQA'))
+
+all_to_all_item_accs <- read_csv('data/item_level_accs_ai2_arc_all_to_all_table_models-1_LC-0_prompts-1_boots-5.csv') %>%
+  mutate(dataname='ARC')
+all_to_all_item_accs <- rbind(all_to_all_item_accs, read_csv('data/item_level_accs_mmlu_STEM-5_all_to_all_table_models-1_LC-0_prompts-1_boots-5.csv') %>%
+  mutate(dataname='MMLU-STEM-5'))
+all_to_all_item_accs <- rbind(all_to_all_item_accs, read_csv('data/item_level_accs_strategy-qa_all_to_all_table_models-1_LC-0_prompts-1_boots-5.csv') %>%
+  mutate(dataname='StrategyQA')) 
+all_to_all_item_accs <- rbind(all_to_all_item_accs, read_csv('data/item_level_accs_gsm8k_main_all_to_all_table_models-1_LC-0_prompts-1_boots-5.csv') %>%
+  mutate(dataname='GSM8k') %>% mutate(test_on='all'))
+
+item_level_accs <- read_csv('data/item_level_accs_ai2_arc_get_population_table_models-3_LC-0_prompts-1_boots-5.csv') %>%
+  mutate(dataname='ARC')
+item_level_accs <- rbind(item_level_accs, read_csv('data/item_level_accs_mmlu_STEM-5_get_population_table_models-3_LC-0_prompts-1_boots-5.csv') %>%
+  mutate(dataname='MMLU-STEM-5'))
+item_level_accs <- rbind(item_level_accs, read_csv('data/item_level_accs_strategy-qa_get_population_table_models-3_LC-0_prompts-1_boots-5.csv') %>%
+  mutate(dataname='StrategyQA'))
+item_level_accs <- rbind(item_level_accs, read_csv('data/item_level_accs_gsm8k_main_get_population_table_models-3_LC-0_prompts-1_boots-5.csv') %>%
+  mutate(dataname='GSM8k', test_on='all'))
+
+third_grade_to_college <- read_csv('data/third_grade_to_college_models-4_LC-0_prompts-1_boots-5.csv')
+
+noise_data <- read_csv('data/mmlu_STEM-5_noisy_labels_table_models-1_prompts-1_boots-5.csv')
+
+strategyQA_model_robustness <- read_csv('data/strategy-qa_get_population_table_models-4_LC-0_prompts-1_boots-5.csv') %>%
+  rbind(read_csv('data/strategy-qa_get_population_table_models-3_LC-0_prompts-1_boots-5_k=4.csv'))
+
+```
+
+```{r theme}
+
+theme = theme(
+        axis.ticks = element_blank(),
+        axis.text = element_text(size=8, color='black'),
+        axis.line.x = element_line(colour = 'black', size = .3),
+        axis.line.y = element_line(colour = 'black', size = .3),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_line(colour = '#DFDFDF', size = .2),
+        text = element_text(size=8, family="serif"),
+        axis.title.x = element_text(size = 10),
+        axis.title.y = element_text(size = 10),
+        plot.title = element_text(size = 12, hjust=0.5),
+        legend.text = element_text(size=10),
+        legend.box.background = element_blank(),
+        legend.position = "right",
+        panel.spacing=unit(1.5,"lines"),
+        strip.background = element_rect(fill = "white"),
+        strip.text.x = element_text(face="bold", size=8),
+        strip.text.y = element_text(angle=0, face="bold", size=8, hjust=0),
+        )
+
+cbp1 <- c("#999999", "#009E73", "#0072B2", "#D55E00", "#56B4E9", "#CC79A7", "#3E3938",  "#E69F00" )
+
+```
+
+
+```{r define globals}
+
+all_show_vars = c("Question Num. Words", "Answer Num. Chars", "High School vs. College", "Grade Level", "ARC 1/2/3 Difficulty","Bloom Skill","Num. Reasoning Steps", "MDL")
+
+```
+
+```{r postprocessing}
+
+hardness_levels = c("easy", "medium", "hard", "easy_and_hard", "all")
+nice_hardness_levels = c("Easy", "Medium", "Hard", "  Easy+Hard", "All")
+model_levels = c("Llama-2-7b", "Llama-2-13b", "Llama-2-70b", "Llama-2-70b-chat", "mistralai/Mixtral-8x7B-v0.1", "Qwen/Qwen-72B")
+nice_model_levels = c("Llama2 7b", "Llama2 13b", "Llama2 70b", "Llama2 70b (Chat)", "Mixtral-8x7B", "Qwen-72B")
+
+postprocess <- function(dataframe){
+  dataframe <- dataframe %>%
+  mutate(generalization_gap = test_acc - test_acc_train_distr,
+         gen_gap = generalization_gap,
+         train_on = factor(train_on, levels=hardness_levels),
+         test_on = factor(test_on, levels=hardness_levels),
+        model_cleaned = ifelse(model=="mistralai/Mixtral-8x7B-v0.1", "Mixtral-8x7B", 
+                        ifelse(model=="Qwen/Qwen-72B", "Qwen-72B", 
+                               model)),
+        model = factor(model, levels=model_levels),
+        model_cleaned = gsub("-2", "2", gsub("2-", "2 ", model_cleaned)),
+        model_cleaned = gsub("-chat", " (Chat)", model_cleaned),
+        model_nice = factor(model_cleaned, levels=nice_model_levels),
+        probing_method_nice = ifelse(probing_method == "decoding", "ICL", 
+                              ifelse(probing_method == "learned", "Linear Probe",
+                              ifelse(probing_method == "finetuned", "QLoRA", NA))),
+        hardness_var_name_nice = ifelse(hardness_var_name=="answer_num_chars", "Answer Num. Chars",
+                        ifelse(hardness_var_name=="human_bloom", "Bloom Skill",
+                        ifelse(hardness_var_name=="human_difficulty", "ARC 1/2/3 Difficulty",
+                        ifelse(hardness_var_name=="human_grade", "Grade Level",
+                        ifelse(hardness_var_name=="model_based_decoding_avg", "MDL (ZS Prompt)",
+                        ifelse(hardness_var_name=="model_based_learned_avg", "MDL (Linear Probe)",
+                        ifelse(hardness_var_name=="model_based_finetuned_avg", "MDL (QLoRA)",
+                        ifelse(hardness_var_name=="question_num_words", "Question Num. Words",
+                        ifelse(hardness_var_name=="answer_num_words", "Answer Num. Words",
+                        ifelse(hardness_var_name=="reasoning_num_words", "Reasoning Num. Words",
+                        ifelse(hardness_var_name=="human_hardness", "High School vs. College",
+                        ifelse(hardness_var_name=="num_steps", "Num. Reasoning Steps", NA)
+                        ))))))))))),
+        train_on_nice = ifelse(train_on=="easy", "Easy",
+                        ifelse(train_on=="medium", "Medium",
+                        ifelse(train_on=="hard", "Hard",
+                        ifelse(train_on=="easy_and_hard", "  Easy+Hard",
+                        ifelse(train_on=="all", "All", NA))))),
+         train_on_nice = factor(train_on_nice, levels=nice_hardness_levels),
+         test_on_nice = ifelse(test_on=="easy", "Easy",
+                ifelse(test_on=="medium", "Medium",
+                ifelse(test_on=="hard", "Hard",
+                ifelse(test_on=="easy_and_hard", "  Easy+Hard",
+                ifelse(test_on=="all", "All", NA))))),
+         test_on_nice = factor(test_on_nice, levels=nice_hardness_levels),
+        supervision = ifelse(n_train == 0, 'Unsupervised', as.character(train_on_nice)),
+        supervision = factor(supervision, levels=c("Unsupervised", "Easy", "Medium", "Hard", "All")),
+        dataname = ifelse(dataname == 'ai2_arc', 'ARC',
+                   ifelse(dataname == 'strategy-qa', 'StrategyQA',
+                   ifelse(dataname == 'gsm8k_main', 'GSM8k', 
+                   ifelse(dataname == 'mmlu_STEM-5', 'MMLU-STEM-5', dataname)))),
+        test_dataname = ifelse(test_dataname == 'ai2_arc', 'ARC',
+                         ifelse(test_dataname == 'strategy-qa', 'StrategyQA',
+                         ifelse(test_dataname == 'gsm8k_main', 'GSM8k', 
+                         ifelse(test_dataname == 'mmlu_STEM-5', 'MMLU-STEM-5', dataname))))
+        
+         ) 
+  return(dataframe)
+}
+
+all_to_all_data <- postprocess(all_to_all_data)
+boot_avg_data <- postprocess(boot_avg_data)
+LC_data <- postprocess(LC_data)
+third_grade_to_college <- postprocess(third_grade_to_college)
+noise_data <- postprocess(noise_data)
+strategyQA_model_robustness <- postprocess(strategyQA_model_robustness)
+
+item_level_accs <- item_level_accs %>% 
+  mutate(hardness_var_name_nice = ifelse(hardness_var_name=="answer_num_chars", "Answer Num. Chars",
+                                  ifelse(hardness_var_name=="human_bloom", "Bloom Skill",
+                                  ifelse(hardness_var_name=="human_difficulty", "ARC 1/2/3 Difficulty",
+                                  ifelse(hardness_var_name=="human_grade", "Grade Level",
+                                  ifelse(hardness_var_name=="model_based_decoding_avg", "MDL (ZS Prompt)",
+                                  ifelse(hardness_var_name=="model_based_learned_avg", "MDL (Linear Probe)",
+                                  ifelse(hardness_var_name=="model_based_finetuned_avg", "MDL (QLoRA)",
+                                  ifelse(hardness_var_name=="question_num_words", "Question Num. Words",
+                                  ifelse(hardness_var_name=="reasoning_num_words", "Reasoning Num. Words",
+                                  ifelse(hardness_var_name=="human_hardness", "High School vs. College",
+                                  ifelse(hardness_var_name=="num_steps", "Num. Reasoning Steps", NA)
+                                  )))))))))),
+         train_on_nice = ifelse(train_on=="easy", "Easy",
+                        ifelse(train_on=="medium", "Medium",
+                        ifelse(train_on=="hard", "Hard",
+                        ifelse(train_on=="easy_and_hard", "  Easy+Hard",
+                        ifelse(train_on=="all", "All", NA))))),
+         train_on_nice = factor(train_on_nice, levels=nice_hardness_levels),
+        supervision = ifelse(n_train == 0, 'Unsupervised', as.character(train_on_nice)),
+        supervision = factor(supervision, levels=c("Unsupervised", "Easy", "Medium", "Hard", "All")),
+         )
+all_to_all_item_accs <- all_to_all_item_accs %>% 
+  mutate(hardness_var_name_nice = ifelse(hardness_var_name=="answer_num_chars", "Answer Num. Chars",
+                                  ifelse(hardness_var_name=="human_bloom", "Bloom Skill",
+                                  ifelse(hardness_var_name=="human_difficulty", "ARC 1/2/3 Difficulty",
+                                  ifelse(hardness_var_name=="human_grade", "Grade Level",
+                                  ifelse(hardness_var_name=="model_based_decoding_avg", "MDL (ZS Prompt)",
+                                  ifelse(hardness_var_name=="model_based_learned_avg", "MDL (Linear Probe)",
+                                  ifelse(hardness_var_name=="model_based_finetuned_avg", "MDL (QLoRA)",
+                                  ifelse(hardness_var_name=="question_num_words", "Question Num. Words",
+                                  ifelse(hardness_var_name=="reasoning_num_words", "Reasoning Num. Words",
+                                  ifelse(hardness_var_name=="human_hardness", "High School vs. College",
+                                  ifelse(hardness_var_name=="num_steps", "Num. Reasoning Steps", NA)
+                                  )))))))))),
+         train_on_nice = ifelse(train_on=="easy", "Easy",
+                        ifelse(train_on=="medium", "Medium",
+                        ifelse(train_on=="hard", "Hard",
+                        ifelse(train_on=="easy_and_hard", "  Easy+Hard",
+                        ifelse(train_on=="all", "All", NA))))),
+         train_on_nice = factor(train_on_nice, levels=nice_hardness_levels),
+        supervision = ifelse(n_train == 0, 'Unsupervised', as.character(train_on_nice)),
+        supervision = factor(supervision, levels=c("Unsupervised", "Easy", "Medium", "Hard", "All")),
+         )
+
+```
+
+```{r ACC numbers: performance by method table}
+
+MODEL = "Llama-2-70b"
+
+(super_summary_table <- all_to_all_data %>%
+    filter(
+      model==MODEL,
+      train_on=="all",
+      test_on=="all",
+      is.na(hardness_var_name)) %>%
+    mutate(method_cot = paste(probing_method_nice, sprintf("CoT=%s", use_cot), sprintf("n=%s", n_train))) %>%
+    select(model, dataname, method_cot, test_acc, hardness_var_name, sample_size) %>%
+    group_by(dataname, model, method_cot) %>%
+    summarise(acc=mean(test_acc))
+)
+
+```
+
+```{r Fig1 third grade to college, fig.height=2, fig.width=3.5}
+
+MODEL = 'Mixtral-8x7B'
+train_levels = c('easy', 'hard')
+METHOD = 'decoding'
+
+plot_data <- third_grade_to_college %>%
+  mutate(test_acc_100=round(100*test_acc, 2),
+        label_str=round(100*test_acc, 1),
+         error_100 = 100*error_bar) %>%
+  filter(test_on %in% c("hard"),
+         train_on %in% train_levels,
+         grepl(MODEL, model),
+         probing_method==METHOD | n_train == 0) %>%
+  mutate(
+         supervision = ifelse(n_train == 0, 'Unsupervised',
+                       ifelse(dataname == 'ARC' & train_on == 'easy', '3rd Grade',
+                       ifelse(dataname == 'ARC' & train_on == 'hard', '8th Grade',
+                       ifelse(dataname == 'MMLU-STEM-5' & train_on == 'easy', 'High School',
+                       ifelse(dataname == 'MMLU-STEM-5' & train_on == 'hard', 'College', 'NA'
+                             ))))),
+         supervision = factor(supervision, levels=c("Unsupervised", "3rd Grade", "8th Grade", "High School", "College"))
+         ) %>%
+  select(dataname, test_dataname, train_on, test_on, n_train, supervision, test_acc_100, label_str, error_100, n_test, sample_size)
+
+dodge_width <- .85
+(barplot <- 
+plot_data %>%
+  ggplot(aes(x=supervision, y=test_acc_100, fill=supervision, label=label_str)) +
+  geom_bar(stat = "identity", position = "dodge", width=dodge_width) +
+  geom_text(position = position_dodge(width = dodge_width),
+            size=4.7,
+              vjust = -0.5,    # nudge above top of bar
+            family="Times",
+            ) +
+  labs(
+      title = sprintf("Accuracy on College STEM Questions"),
+      x = "Train Data",
+      y = "",
+      # y = "Test\nAcc",
+      fill = "Train Data Source",
+    ) + 
+  coord_cartesian(ylim=c(30, 65)) +
+  scale_fill_manual(values=c(cbp1[1], cbp1[4:8]), labels = c("Unsupervised", "3rd Grade", "8th Grade", "High School", "College")) +
+  theme + 
+  theme(axis.text.x = element_text(size=11, color='black', angle=0, hjust=.55),
+        axis.text.y = element_text(size=12, color='black'),
+        axis.title.x = element_text(size=14, color='black', angle=0, vjust=-.3),
+        axis.title.y = element_text(size=14, color='black', angle=0, vjust=.5, hjust=-.5),
+        plot.title = element_text(size=16, hjust=0.5),
+        legend.title = element_text(size=10),
+        legend.text = element_text(size=10),
+        legend.key = element_rect(fill = "white"),
+        legend.position = "none")
+)
+
+ggsave(barplot, filename = sprintf("plots/third_grade_to_college_%s_%s.pdf", METHOD, MODEL),
+  width = 4.5, height = 3, units = "in")
+
+```
+
+
+```{r Fig1 robustness across models, fig.height=2, fig.width=3.5}
+
+METHOD = 'ICL'
+plot_data <- third_grade_to_college %>%
+  mutate(test_acc_100=round(100*test_acc, 2),
+        label_str=round(100*test_acc, 1),
+         error_100 = 100*error_bar) %>%
+  filter(test_on %in% c("hard"),
+         probing_method_nice == METHOD,
+         ! (dataname == 'ARC' & grepl("Chat", model_nice))) %>%
+  mutate(
+         supervision = ifelse(n_train == 0, 'Unsupervised',
+                       ifelse(dataname == 'ARC' & train_on == 'easy', '3rd Grade',
+                       ifelse(dataname == 'ARC' & train_on == 'hard', '8th Grade',
+                       ifelse(dataname == 'ai2_arc_all' & train_on == 'easy', '3rd Grade',
+                       ifelse(dataname == 'ai2_arc_all' & train_on == 'hard', '8th Grade',
+                       ifelse(dataname == 'MMLU-STEM-5' & train_on == 'easy', 'High School',
+                       ifelse(dataname == 'MMLU-STEM-5' & train_on == 'hard', 'College', 'NA'
+                             ))))))),
+         supervision = factor(supervision, levels=c("Unsupervised", "3rd Grade", "8th Grade", "High School", "College"))
+         ) %>%
+  select(dataname, model_nice, probing_method_nice, test_dataname, train_on, test_on, n_train, supervision, test_acc_100, label_str, error_100, n_test, sample_size)
+
+ZS_row <- plot_data %>% filter(n_train == 0)
+for (method in c("Linear Probe", "QLoRA")){
+  ZS_row$probing_method_nice <- method
+  plot_data <- rbind(plot_data, ZS_row)
+}
+
+dodge_width <- .85
+(barplot <- 
+plot_data %>%
+  filter(probing_method_nice==METHOD) %>%
+  unique() %>%
+  ggplot(aes(x=supervision, y=test_acc_100, fill=supervision, label=label_str)) +
+  geom_bar(stat = "identity", position = "dodge", width=dodge_width) +
+  geom_text(position = position_dodge(width = dodge_width),
+            size=3.2, 
+              vjust = -0.5,    # nudge above top of bar
+            family="Times",
+            ) +
+  labs(
+      title = expression("Hard Test Performance As a Function of Training Hardness (Across Models)"),
+      x = "Train Data",
+      y = "Hard Test Acc\n(MMLU)",
+      fill = "Train Data Source",
+    ) + 
+  coord_cartesian(ylim=c(35, 60)) +
+  scale_fill_manual(values=c(cbp1[1], cbp1[4:8]), labels = c("Unsupervised", "3rd Grade", "8th Grade", "High School", "College")) +
+  facet_wrap(. ~ model_nice, ncol=2) +
+  theme + 
+  theme(
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size=10, color='black'),
+        axis.title.x = element_text(size=12, color='black', angle=0, vjust=-.3),
+        axis.title.y = element_text(size = 11, angle=0, vjust=.5),
+        plot.title = element_text(size=12, hjust=0.5),
+        legend.title = element_text(size=11),
+        legend.text = element_text(size=10),
+        legend.key = element_rect(fill = "white"),
+        strip.text.x = element_text(angle=0, face="bold", size=10, hjust=.5),
+        )
+)
+
+ggsave(barplot, filename = sprintf("plots/RQ4_train-test-diff_3rd-to-college_model-robustness_%s.pdf", METHOD),
+  width = 7, height = 4, units = "in")
+
+```
+
+
+```{r RQ1}
+
+for (DATANAME in c("ai2_arc", "mmlu_STEM-5", "strategy-qa", "gsm8k_main")){
+
+  corr_path <- sprintf("data/%s_corr_matrix_Llama-2-70b.csv", DATANAME)
+  corr_matrix <- read_csv(corr_path)
+  corr_matrix <- corr_matrix[, colSums(is.na(corr_matrix)) < nrow(corr_matrix)]
+  melt_corr <- melt(corr_matrix)
+  colnames(melt_corr) <- c("var1", "var2", "value")
+  levels = c("Question Num. Words", "Answer Num. Chars", "Reasoning Num. Words", "High School vs. College","Grade Level","1/2/3 Difficulty","Bloom Skill","Num. Reasoning Steps", "MDL (ZS Prompt)","MDL (Linear Probe)","MDL (QLoRA)")
+  combined_levels = c("Question Num. Words", "Answer Num. Chars", "Reasoning Num. Words", "High School vs. College","Grade Level","1/2/3 Difficulty","Bloom Skill","Num. Reasoning Steps", "MDL")
+  melt_corr <- melt_corr %>%
+    arrange(var1) %>%
+    mutate(var1 = ifelse(var1=="answer_num_chars", "Answer Num. Chars",
+                                    ifelse(var1=="human_bloom", "Bloom Skill",
+                                    ifelse(var1=="human_difficulty", "1/2/3 Difficulty",
+                                    ifelse(var1=="human_grade", "Grade Level",
+                                    ifelse(var1=="MDL_decoding_model-avg", "MDL (ZS Prompt)",
+                                    ifelse(var1=="MDL_learned_model-avg", "MDL (Linear Probe)",
+                                    ifelse(var1=="MDL_finetuned_model-avg", "MDL (QLoRA)",
+                                    ifelse(var1=="question_num_words", "Question Num. Words",
+                                    ifelse(var1=="reasoning_num_words", "Reasoning Num. Words",
+                                    ifelse(var1=="human_hardness", "High School vs. College",
+                                    ifelse(var1=="num_steps", "Num. Reasoning Steps", NA))))))))))),
+           var2 = ifelse(var2=="answer_num_chars", "Answer Num. Chars",
+                                    ifelse(var2=="human_bloom", "Bloom Skill",
+                                    ifelse(var2=="human_difficulty", "1/2/3 Difficulty",
+                                    ifelse(var2=="human_grade", "Grade Level",
+                                    ifelse(var2=="MDL_decoding_model-avg", "MDL (ZS Prompt)",
+                                    ifelse(var2=="MDL_learned_model-avg", "MDL (Linear Probe)",
+                                    ifelse(var2=="MDL_finetuned_model-avg", "MDL (QLoRA)",
+                                    ifelse(var2=="question_num_words", "Question Num. Words",
+                                    ifelse(var2=="reasoning_num_words", "Reasoning Num. Words",
+                                    ifelse(var2=="human_hardness", "High School vs. College",
+                                    ifelse(var2=="num_steps", "Num. Reasoning Steps", NA))))))))))),
+           dataname=DATANAME,
+           dataname = ifelse(dataname == 'ai2_arc', 'ARC',
+                     ifelse(dataname == 'strategy-qa', 'StrategyQA',
+                     ifelse(dataname == 'gsm8k_main', 'GSM8k', 
+                     ifelse(dataname == 'mmlu_STEM-5', 'MMLU-STEM-5', dataname)))),
+            # OPTIONALLY DROP EXTRA MDLs, AND JUST USE ONE
+           var1 = ifelse(var1=="MDL (ZS Prompt)", "MDL", var1),
+           var2 = ifelse(var2=="MDL (ZS Prompt)", "MDL", var2),
+           var1 = factor(var1, levels=combined_levels),
+           var2 = factor(var2, levels=combined_levels),
+           
+           # show all MDLs
+           # var1 = factor(var1, levels=levels),
+           # var2 = factor(var2, levels=levels)
+    ) %>%
+    na.omit()
+  
+  # mdl_show = "all-mdl"
+  # show_vars = c("Question Num. Words", "Answer Num. Chars", "High School vs. College", "Grade Level", "1/2/3 Difficulty","Bloom Skill","Num. Reasoning Steps", "MDL (ZS Prompt)", "MDL (QLoRA)", "MDL (Linear Probe)")
+  mdl_show = "ZS-mdl"
+  show_vars = c("Question Num. Words", "Answer Num. Chars", "High School vs. College", "Grade Level", "1/2/3 Difficulty","Bloom Skill","Num. Reasoning Steps", "MDL")
+  data_title <- melt_corr %>% pull(dataname) %>% unique()
+  if (data_title == 'GSM8k'){
+    show_vars <- setdiff(show_vars, c("MDL"))
+  }
+  if (data_title == 'StrategyQA'){
+    show_vars <- setdiff(show_vars, c("Answer Num. Chars"))
+  }
+  (corr_plot <- 
+     melt_corr %>%
+      filter(var1 %in% show_vars,
+             var2 %in% show_vars) %>%
+  ggplot(aes(var1, var2, fill = value)) +
+    geom_tile() +
+    geom_text(aes(label = round(value, 2)), color = "black", size = 2.8) +
+    scale_fill_gradient2(low = "#C83636", high = "#2760A0", mid = "white", midpoint = 0, limit = c(-1, 1)) +
+    labs( 
+      title = sprintf("Correlation Matrix for %s Hardness Measures", data_title),
+      fill = "Rank Correlation",
+      x = "", 
+      y = ""
+      ) + 
+    theme + 
+    theme(axis.text.x = element_text(angle = 45, size=11, hjust = 1),
+          axis.text.y = element_text(angle = 0, size=11),
+          legend.title = element_text(size=12, vjust=1),
+          plot.title = element_text(size=14))
+  )
+   
+  ggsave(corr_plot, filename = sprintf("plots/%s_corr_plot_%s.pdf", DATANAME, mdl_show),
+    width = 5.3, height = 4, units = "in")
+
+}
+
+
+```
+```{r RQ1 trend plots}
+
+PROBING_METHOD = "decoding"
+MODEL = "Llama-2-70b"
+TRAIN_ON = "all"
+# filter_vars <- c("High School vs. College", "Grade Level", "ARC 1/2/3 Difficulty", "Bloom Skill", "Num. Reasoning Steps")
+# var_set <- "main"
+filter_vars <- c("Question Num. Words", "Answer Num. Chars", "MDL (ZS Prompt)", "MDL (Linear Probe)", "MDL (QLoRA)")
+var_set <- "appendix"
+
+# either get data_id_to_hardness_values from reading the datasets with hardness values or by refashioning it from other item_level_accs runs that have recoded hardness values
+names(item_level_accs)[1] <- "id"
+names(all_to_all_item_accs)[1] <- "id"
+data_id_to_hardness_values <- item_level_accs %>%
+  filter(hardness_var_name_nice %in% filter_vars) %>%
+  select(dataname, id, hardness_value, hardness_level_value, hardness_var_name_nice) %>%
+  mutate(hardness_value = ifelse(hardness_var_name_nice == "Num. Reasoning Steps", ifelse(hardness_value >= 8, 8, hardness_value), hardness_value),
+         hardness_var_name_nice = gsub("ARC ", "", hardness_var_name_nice),
+         hardness_var_name_nice = gsub("Num. ", "", hardness_var_name_nice),
+         hardness_var_name_nice = gsub("High School", "HS", hardness_var_name_nice),
+         group_var = paste(dataname, hardness_var_name_nice),
+         group_var = gsub("MMLU-STEM-5", "MMLU", group_var))
+
+# make filtered_df
+acc_cols <- all_to_all_item_accs %>%
+  select(contains("accuracy"))
+all_to_all_item_accs$acc_mean <- rowMeans(as.matrix(acc_cols), na.rm=TRUE)
+filtered_df <- all_to_all_item_accs %>%
+  filter(probing_method == PROBING_METHOD,
+         train_on == TRAIN_ON,
+         model == MODEL) %>%
+  select(id, dataname, model, probing_method, n_train, train_on, hardness_var_name_nice, acc_mean)
+
+group_vars <- data_id_to_hardness_values %>% pull(group_var) %>% unique()
+group_vars <- setdiff(group_vars, c("GSM8k MDL (QLoRA)", "GSM8k MDL (ZS Prompt)"))
+
+# make a version of filtered_df for each hardness variable, so we can have a column that is group_var
+all_item_level_accs <- data.frame()
+GROUP_VAR <- group_vars[1]
+for (GROUP_VAR in group_vars){
+  join_data <- data_id_to_hardness_values %>% 
+    filter(group_var==GROUP_VAR) %>%
+    select(id, dataname, group_var, hardness_var_name_nice, hardness_value, hardness_level_value) %>%
+    unique()
+  DATANAME <- join_data %>% pull(dataname) %>% unique()
+  new_df <- filtered_df %>%
+    filter(dataname==DATANAME) %>% 
+    select(-c(dataname)) %>%
+    inner_join(join_data, by="id")
+  all_item_level_accs <- rbind(all_item_level_accs, new_df)
+}
+table(all_item_level_accs$group_var)
+
+# get hardness var names that we want to make binned plots of, vs. barplots
+binned_var_names <- data_id_to_hardness_values %>%
+  group_by(group_var) %>%
+  summarise(unique_count = n_distinct(hardness_value)) %>%
+  filter(unique_count >= 9) %>%
+  pull(group_var)
+barplot_names <- setdiff(unique(data_id_to_hardness_values$group_var), binned_var_names)
+binned_plots <- list()
+if (length(binned_var_names) > 0){
+  # get bins per variable
+bin_data <- all_item_level_accs %>%
+  filter(group_var %in% binned_var_names) %>% 
+  group_by(group_var) %>%
+  summarise(breaks = list(seq(min(hardness_value), max(hardness_value), length.out = 5)))
+# make binned plots in a list
+for (i in 1:nrow(bin_data)) {
+  var_name <- bin_data$group_var[i]
+  breaks <- bin_data$breaks[[i]]
+  breaks[1] = breaks[1] - .01
+  breaks[length(breaks)] = breaks[length(breaks)] + .01
+  XLIM <- c(floor(min(breaks)), max(breaks)*1.05)
+  
+  subset_data <- all_item_level_accs %>%
+    filter(group_var == var_name)
+  
+  summary_data <- subset_data %>%
+    group_by(cut_hardness = cut(hardness_value, breaks = breaks)) %>%
+    summarise(mean_acc = mean(acc_mean, na.rm=TRUE),
+              sd_acc = sd(acc_mean, na.rm=TRUE),
+              n = n()) %>%
+    mutate(se = sd_acc / sqrt(n),
+           ci_lower = mean_acc - qt(0.975, df = n - 1) * se,
+           ci_upper = mean_acc + qt(0.975, df = n - 1) * se,
+           test_acc_100 = mean_acc*100,
+           ci_lower_100 = ci_lower*100,
+           ci_upper_100 = ci_upper*100) %>%
+    filter(se < .1)
+    # filter(n>=30)
+  
+  summary_data$cut_hardness_mid <- (as.numeric(gsub("\\((.+),(.+)\\]", "\\1", summary_data$cut_hardness)) +
+                                   as.numeric(gsub("\\((.+),(.+)\\]", "\\2", summary_data$cut_hardness))) / 2
+
+  local_dataname <- subset_data %>%
+    pull(dataname) %>%
+    unique()
+  
+  if (local_dataname == 'ARC'){
+    # YLIM = c(80, 95)
+    YLIM = c(70, 100)
+    if (var_set == "appendix") YLIM = c(50, 100)
+  }
+  if (local_dataname == 'StrategyQA'){
+    # YLIM = c(45, 80)
+    YLIM = c(40, 95)
+  }
+  if (local_dataname == 'MMLU-STEM-5'){
+    # YLIM = c(40, 60)
+    YLIM = c(30, 70)
+    if (var_set == "appendix") YLIM = c(20, 100)
+    var_name = gsub("MMLU-STEM-5", "MMLU", var_name)
+    var_name = gsub("High School", "HS", var_name)
+  }
+  if (local_dataname == 'GSM8k'){
+    YLIM = c(0, 85)
+  }
+  # Create the plot for the current combination
+  (plot <-
+  ggplot(summary_data, aes(x = cut_hardness_mid, y = test_acc_100)) +
+    geom_line() +
+    geom_errorbar(aes(ymin = ci_lower_100, ymax = ci_upper_100), width = 0) +
+    labs(
+      x = "",
+      y = "",
+      title = var_name,
+    ) + 
+    coord_cartesian(xlim=XLIM, ylim=YLIM) + 
+    theme + 
+    theme(text = element_text(size=10, family="serif"),
+        axis.text = element_text(size=11, color='black'),
+        plot.title = element_text(face="bold", size=11),
+        axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        legend.position="none")
+  )
+  if (var_name == "MMLU MDL (ZS Prompt)"){
+    plot <- plot + 
+      coord_cartesian(ylim=YLIM, xlim=c(0, 1))
+  }
+  if (var_name == "ARC Question Words"){
+    plot <- plot + 
+      coord_cartesian(ylim=YLIM, xlim=c(0, 90))
+  }
+  if (var_name == "GSM8k Question Words"){
+    plot <- plot + 
+      coord_cartesian(ylim=YLIM, xlim=c(0, 120))
+  }
+  if (var_name == "MMLU Question Words"){
+    plot <- plot + 
+      coord_cartesian(ylim=c(0,100), xlim=c(0, 150))
+  }
+  if (var_name == "GSM8k MDL (ZS Prompt)"){
+    plot <- plot + 
+      coord_cartesian(ylim=YLIM, xlim=c(10, 20))
+  }
+  if (var_name == "MMLU Answer Chars"){
+    plot <- plot + 
+      coord_cartesian(ylim=YLIM, xlim=c(0, 200))
+  }
+  binned_plots[[i]] <- plot
+}}
+# barplots for variables with few values
+if (length(barplot_names) > 0){
+for (i in (length(binned_var_names)+1):(length(c(binned_var_names, barplot_names)))){
+  var_idx = i - length(binned_var_names)
+  var_name <- barplot_names[var_idx]
+  plot_data <- all_item_level_accs %>%
+    filter(group_var == var_name) %>%
+    group_by(dataname, group_var, hardness_value) %>%
+    summarise(mean_y = mean(acc_mean, na.rm=TRUE),
+              sd_y = sd(acc_mean, na.rm=TRUE),
+              n = n()) %>%
+    mutate(se = sd_y / sqrt(n),
+           ci_lower = mean_y - qt(0.975, df = n - 1) * se,
+           ci_upper = mean_y + qt(0.975, df = n - 1) * se,
+           test_acc_100 = mean_y*100,
+           ci_lower_100 = ci_lower*100,
+           ci_upper_100 = ci_upper*100)
+  local_dataname <- plot_data %>%
+    pull(dataname) %>%
+    unique()
+  # adjust gsm8k scale
+  if (local_dataname == 'GSM8k'){
+    plot_data <- plot_data %>%
+      mutate(hardness_value = hardness_value - 1,
+             hardness_value = ifelse(hardness_value >= 7, "7+", as.character(hardness_value)),
+             hardness_value = factor(hardness_value, levels=c("1", "2", "3", "4", "5", "6", "7+")))
+  }
+  # set YLIM
+  if (local_dataname == 'ARC'){
+    # YLIM = c(80, 95)
+    YLIM = c(70, 100)
+  }
+  if (local_dataname == 'StrategyQA'){
+    # YLIM = c(45, 80)
+    YLIM = c(40, 95)
+  }
+  if (local_dataname == 'MMLU-STEM-5'){
+    # YLIM = c(40, 60)
+    YLIM = c(40, 65)
+    var_name = gsub("MMLU-STEM-5", "MMLU", var_name)
+    var_name = gsub("High School", "HS", var_name)
+  }
+  if (local_dataname == 'GSM8k'){
+    YLIM = c(0, 85)
+  }
+  plot <- plot_data %>%
+    ggplot(aes(x=hardness_value, y=test_acc_100, fill=cbp1[3])) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_errorbar(aes(ymin = ci_lower_100, ymax = ci_upper_100), width = 0, position = position_dodge(width = 0.9)) +
+    coord_cartesian(ylim=YLIM) +
+    labs(
+      # x = var_name,
+      x = "",
+      y = "",
+      title = var_name,
+    ) +
+    theme +
+    theme(text = element_text(size=10, family="serif"),
+          axis.text = element_text(size=10, color='black'),
+          plot.title = element_text(face="bold", size=10),
+          axis.text.x = element_text(size=10),
+          axis.text.y = element_text(size=10),
+          axis.title.x = element_text(size = 12),
+          axis.title.y = element_text(size = 12),
+          legend.position = "none" )
+    theme(plot.margin=unit(c(0,0,0,-.5), "cm"))
+  if (local_dataname == 'MMLU-STEM-5'){
+    plot <- plot + 
+      labs(x="") + 
+      scale_x_continuous(breaks=c(0,1), labels=c("High School", "College"))
+  }
+  if (var_name == 'ARC Grade Level'){
+    plot <- plot +
+      scale_x_continuous(breaks=seq(3,8), labels=seq(3,8))
+  }
+  binned_plots[[i]] <- plot
+}}
+
+if (var_set == "main") {ncol=2; width=4.2; height = 6}
+if (var_set == "appendix") {ncol=3; width=7; height = 8.7}
+
+(grid_plot <- grid.arrange(
+    grobs=binned_plots, 
+    ncol = ncol,
+    top = textGrob(expression("Model Accuracy vs. Test Data Hardness"), gp=gpar(fontfamily="Times", fontsize=13), vjust=.4),
+    bottom = textGrob("Test Data Hardness", gp = gpar(fontfamily="Times", fontsize=11), hjust = 0.5, vjust=-1.5),
+  )
+)
+
+ggsave(grid_plot, filename = sprintf("plots/RQ1_acc_vs_hardness_%s_train-%s_%s-vars.pdf", PROBING_METHOD, TRAIN_ON, var_set),
+  width = width, height=height, units = "in")
+
+
+```
+
+
+```{r RQ1 main plot}
+
+MODEL = 'Llama-2-70b'
+# MODEL = 'Mixtral-8x7b'
+supervision_levels = c("Unsupervised", "Easy", "Hard")
+METHOD = 'decoding'
+TEST_ON = "All"
+YLIM=c(.5, 1)
+show_vars <- c("High School vs. College", "Grade Level", "1/2/3 Difficulty","Bloom Skill", "Num. Reasoning Steps")
+var_set <- "main"
+# show_vars <- c("Question Num. Words", "Answer Num. Chars", "MDL (ZS Prompt)", "MDL (Linear Probe)", "MDL (QLoRA)")
+# var_set <- "appendix"
+
+plot_data <- boot_avg_data %>%
+  mutate(test_acc_100 = 100*test_acc,
+         hardness_var_name_nice = gsub("ARC ", "", hardness_var_name_nice),
+         group_var = paste(dataname, hardness_var_name_nice),
+         group_var = gsub("High School", "HS", group_var),
+         group_var = gsub("MMLU-STEM-5", "MMLU", group_var),
+         group_var = gsub("Num. Reasoning", "Reasoning", group_var),
+         label_str=round(test_acc_100, 1),
+         ) %>%
+  select(dataname, supervision, train_on_nice, test_on, test_on_nice, use_cot, hardness_var_name_nice, group_var, probing_method, n_train, model, test_acc_100, label_str, error_bar, n_test, sample_size) %>%
+  filter(test_on_nice == TEST_ON,
+         supervision %in% supervision_levels,
+         model==MODEL,
+         probing_method==METHOD | supervision=='Unsupervised',
+         use_cot==TRUE & dataname %in% c("StrategyQA", "GSM8k") | (use_cot==FALSE & dataname=="StrategyQA" & supervision=="Unsupervised") | (use_cot==FALSE & dataname %in% c("ARC", "MMLU-STEM-5")),
+         dataname == 'GSM8k' & grepl("Steps", hardness_var_name_nice) | dataname != 'GSM8k',
+         hardness_var_name_nice %in% show_vars,
+         )
+
+group_vars <- plot_data %>% pull(group_var) %>% unique()
+
+dodge_width <- .85
+plots <- list()
+for (i in 1:length(group_vars)){
+  subplot_data <- plot_data %>%
+    filter(group_var == group_vars[i])
+  local_dataname <- subplot_data %>% pull(dataname) %>% unique()
+  var_name <- group_vars[i]
+  if (local_dataname == 'ARC'){
+    # YLIM = c(80, 95)
+    YLIM = c(50, 100)
+    if (var_set == "appendix") YLIM = c(50, 100)
+  }
+  if (local_dataname == 'StrategyQA'){
+    # YLIM = c(45, 80)
+    # YLIM = c(50, 100)
+    YLIM = c(50, 100)
+    if (var_set == "appendix") YLIM = c(20, 100)
+  }
+  if (local_dataname == 'MMLU-STEM-5'){
+    # YLIM = c(40, 60)
+    # YLIM = c(25, 100)
+    YLIM = c(25, 75)
+    if (var_set == "appendix") YLIM = c(20, 80)
+  }
+  if (local_dataname == 'GSM8k'){
+    if (TEST_ON == "Hard") YLIM = c(0, 40)
+    if (TEST_ON == "All") YLIM = c(0, 60)
+    if (TEST_ON == "Easy") YLIM = c(0, 80)
+  }
+  plot <- subplot_data %>%
+    ggplot(aes(x=supervision, y=test_acc_100, fill=supervision, label=label_str)) +
+    geom_bar(stat = "identity", position = "dodge", width=dodge_width) +
+    geom_text(position = position_dodge(width = dodge_width),
+              size=3.7, 
+                vjust = -0.5,    # nudge above top of bar
+              family="Times",
+              ) +
+    labs(
+        title = var_name,
+        x = "",
+        y = "",
+        fill = "",
+      ) + 
+    coord_cartesian(ylim=YLIM) + 
+    scale_fill_manual(values=cbp1, labels = c("Easy", "Hard")) +
+    theme + 
+    theme(axis.text.x = element_text(size=10, color='black', angle=0, hjust=.55),
+          axis.text.y = element_text(size=10),
+          plot.title = element_text(face="bold", size=10),
+          legend.title = element_text(size=12),
+          legend.text = element_text(size=9),
+          legend.key = element_rect(fill = "white"),
+          panel.spacing = unit(0.5, "lines")) + 
+    theme(legend.position = "none")
+  plots[[i]] <- plot
+}
+
+NCOL=3
+if (var_set == 'appendix') NCOL=4
+(grid_plot <- grid.arrange(
+    grobs=plots, 
+    ncol = NCOL,
+    space=0,
+    top = textGrob(sprintf("%s Test Accuracy vs. Train Data Source", TEST_ON), gp=gpar(fontfamily="Times", fontsize=14), vjust=0.4),
+    bottom = textGrob("Train Data Source", gp = gpar(fontfamily="Times", fontsize=13), hjust = 0.5, vjust=-.5),
+  )
+)
+
+if (var_set == "main") {width = 7.2; height = 4.5}
+if (var_set == "appendix") {width = 11; height = 7}
+
+ggsave(grid_plot, filename = sprintf("plots/RQ2_test_acc_vs_train_hardness_%s_%s_%s.pdf", METHOD, TEST_ON, var_set),
+  width = width, height = height, units = "in")
+
+```
+
+
+```{r RQ1: gen_gap by method}
+
+MODEL = "Llama-2-70b"
+
+show_vars <- c("High School vs. College", "Grade Level", "1/2/3 Difficulty","Bloom Skill", "Num. Reasoning Steps")
+var_set <- "main"
+# show_vars <- c("Question Num. Words", "Answer Num. Chars", "MDL (ZS Prompt)", "MDL (Linear Probe)", "MDL (QLoRA)")
+# var_set <- "appendix"
+
+SGR_table <- 
+boot_avg_data %>%
+    mutate(
+         hardness_var_name_nice = gsub("ARC ", "", hardness_var_name_nice),
+         group_var = paste(dataname, hardness_var_name_nice),
+         group_var = gsub("High School", "HS", group_var),
+         group_var = gsub("MMLU-STEM-5", "MMLU", group_var),
+         group_var = gsub("Num. Reasoning", "Reasoning", group_var),
+    ) %>%
+    filter(
+      ! (dataname == 'StrategyQA' & use_cot==TRUE & probing_method=="decoding" & n_train==0),
+      hardness_var_name_nice %in% show_vars,
+      model==MODEL,
+      n_train %in% c(0, 8, 10, 160),
+      use_cot==TRUE & dataname %in% c("StrategyQA", "GSM8k") | (use_cot==FALSE & dataname %in% c("ARC", "MMLU-STEM-5")) | supervision=='Unsupervised' | (dataname == 'StrategyQA' & probing_method=='learned'),
+      supervision %in% c("Unsupervised", "Easy", "Hard"),
+      test_on=='hard') %>% 
+  select(dataname, model, probing_method_nice, group_var, supervision, test_on_nice, test_acc) %>%
+  pivot_wider(names_from=supervision, values_from=test_acc, values_fill=list(test_acc=NA)) %>%
+  select(-test_on_nice) %>%
+  select(model, group_var, probing_method_nice, Unsupervised, Easy, Hard) %>%
+   mutate(supervision_gap_recovered = (Easy - Unsupervised) / (Hard - Unsupervised),
+         SGR = supervision_gap_recovered,
+         Unsupervised=round(Unsupervised,3),
+         Easy=round(Easy,3),
+         Hard=round(Hard, 3))
+
+# add unsupervised baseline to linear and finetuning rows
+group_var_to_unsupervised = SGR_table %>%
+  select(group_var, Unsupervised) %>%
+  na.omit()
+for (i in 1:nrow(SGR_table)){
+  GROUP_VAR = SGR_table[i,'group_var']$group_var
+  if (GROUP_VAR %in% group_var_to_unsupervised$group_var){
+    unsupervised_acc = group_var_to_unsupervised %>%
+    filter(group_var==GROUP_VAR) %>%
+    pull(Unsupervised)
+  SGR_table$Unsupervised[i] = unsupervised_acc 
+  }
+}
+
+# recreate SGR vars
+SGR_table <- SGR_table %>% 
+  mutate(supervision_gap_recovered = (Easy - Unsupervised) / (Hard - Unsupervised),
+         SGR = supervision_gap_recovered,
+         Unsupervised=round(Unsupervised,3),
+         Easy=round(Easy,3),
+         Hard=round(Hard, 3)) %>%
+  select(group_var, probing_method_nice, SGR, Unsupervised, Easy, Hard) %>%
+  arrange(group_var, probing_method_nice) %>%
+  mutate(probing_method_nice = gsub(" Probe", "", probing_method_nice),
+         group_var = factor(group_var, levels=c("ARC Grade Level", "ARC 1/2/3 Difficulty", "ARC Bloom Skill", "MMLU HS vs. College", "StrategyQA Reasoning Steps", "GSM8k Reasoning Steps")),
+         label_str = round(SGR, 2)
+         ) %>%
+  na.omit()
+
+# View(easy_vs_hard_table)
+
+dodge_width <- .85
+(barplot <- 
+SGR_table %>%
+  ggplot(aes(x=probing_method_nice, y=SGR, fill=probing_method_nice, label=label_str)) +
+  geom_bar(stat = "identity", position = "dodge", width=dodge_width) +
+  geom_text(aes(label=label_str, y=label_str),
+            position = position_dodge(width = dodge_width),
+            size=3.1, # move to center of bars
+            vjust = -0.5,    # nudge above top of bar
+            family="Times",
+            ) +
+  labs(
+      title = sprintf("Supervision Gap Recovered By Training Method"),
+      x = "Probing Method",
+      y = "SGR",
+      fill = "Probing Method",
+    ) + 
+  coord_cartesian(ylim=c(0, 1.5)) + 
+  scale_fill_manual(values=cbp1[5:8], labels = c("ICL", "Linear Probe", "QLoRA")) +
+  facet_rep_wrap(. ~ group_var, repeat.tick.labels="bottom") +
+  theme + 
+  theme(axis.text.x = element_text(size=9, color='black', angle=0, hjust=.55),
+        axis.text.y = element_text(size=10, color='black'),
+        axis.title.y = element_text(size=12, color='black', angle=0, vjust=.5, hjust=.55),
+        axis.title.x = element_text(size=12, color='black', vjust=-1),
+        legend.title = element_text(size=10),
+        legend.text = element_text(size=9),
+        legend.key = element_rect(fill = "white"),
+        strip.text.x = element_text(size=8, face='bold'),
+        panel.spacing = unit(0.5, "lines"))
+)
+
+ggsave(barplot, filename = sprintf("plots/RQ2_SGR_by_methods_%s.pdf", var_set),
+  width = 7, height = 4, units = "in")
+
+```
+
+
+```{r RQ1 model robustness plot -- strategyQA}
+
+supervision_levels = c("Unsupervised", "Easy", "Hard")
+METHOD = 'decoding'
+TEST_ON = "Hard"
+YLIM=c(.5, 1)
+show_vars <- c("High School vs. College", "Grade Level", "1/2/3 Difficulty","Bloom Skill", "Num. Reasoning Steps")
+var_set <- "main"
+
+plot_data <- strategyQA_model_robustness %>%
+  mutate(test_acc_100 = 100*test_acc,
+         hardness_var_name_nice = gsub("ARC ", "", hardness_var_name_nice),
+         group_var = paste(dataname, hardness_var_name_nice),
+         group_var = gsub("High School", "HS", group_var),
+         group_var = gsub("MMLU-STEM-5", "MMLU", group_var),
+         group_var = gsub("Num. Reasoning", "Reasoning", group_var),
+         label_str=round(test_acc_100, 1),
+         ) %>%
+  select(dataname, supervision, train_on_nice, test_on, test_on_nice, use_cot, hardness_var_name_nice, group_var, probing_method, n_train, model_nice, test_acc_100, label_str, error_bar, n_test, sample_size) %>%
+  filter(test_on_nice == TEST_ON,
+         supervision %in% supervision_levels,
+         model_nice %in% c("Llama2 70b", "Mixtral-8x7B", "Qwen-72B"),
+         n_train %in% c(0, 4, 160),
+         probing_method==METHOD | supervision=='Unsupervised',
+         use_cot==TRUE & dataname %in% c("StrategyQA", "GSM8k") | (use_cot==FALSE & dataname=="StrategyQA" & supervision=="Unsupervised") | (use_cot==FALSE & dataname %in% c("ARC", "MMLU-STEM-5")),
+         hardness_var_name_nice %in% show_vars,
+         )
+
+group_vars <- plot_data %>% pull(group_var) %>% unique()
+
+dodge_width <- .85
+plots <- list()
+for (i in 1:length(group_vars)){
+  subplot_data <- plot_data %>%
+    filter(group_var == group_vars[i])
+  local_dataname <- subplot_data %>% pull(dataname) %>% unique()
+  var_name <- group_vars[i]
+  if (local_dataname == 'ARC'){
+    # YLIM = c(80, 95)
+    YLIM = c(50, 100)
+    if (var_set == "appendix") YLIM = c(50, 100)
+  }
+  if (local_dataname == 'StrategyQA'){
+    # YLIM = c(45, 80)
+    # YLIM = c(50, 100)
+    YLIM = c(50, 95)
+  }
+  if (local_dataname == 'MMLU-STEM-5'){
+    # YLIM = c(40, 60)
+    # YLIM = c(25, 100)
+    YLIM = c(25, 75)
+    if (var_set == "appendix") YLIM = c(20, 80)
+  }
+  if (local_dataname == 'GSM8k'){
+    if (TEST_ON == "Hard") YLIM = c(0, 40)
+    if (TEST_ON == "All") YLIM = c(0, 60)
+  }
+  plot <- subplot_data %>%
+    ggplot(aes(x=supervision, y=test_acc_100, fill=supervision, label=label_str)) +
+    geom_bar(stat = "identity", position = "dodge", width=dodge_width) +
+    geom_text(position = position_dodge(width = dodge_width),
+              size=3.7, 
+                vjust = -0.5,    # nudge above top of bar
+              family="Times",
+              ) +
+    labs(
+        title = var_name,
+        x = "",
+        y = "",
+        fill = "",
+      ) + 
+    coord_cartesian(ylim=YLIM) + 
+    scale_fill_manual(values=cbp1[1:3], labels = c("Easy", "Hard")) +
+    facet_wrap(. ~ model_nice) + 
+    theme + 
+    theme(axis.text.x = element_text(size=10, color='black', angle=0, hjust=.55),
+          axis.text.y = element_text(size=10),
+          plot.title = element_text(face="bold", size=11),
+          legend.title = element_text(size=12),
+          legend.text = element_text(size=9),
+          legend.key = element_rect(fill = "white"),
+          strip.text.x = element_text(size=11), 
+          panel.spacing = unit(0.5, "lines")) + 
+    theme(legend.position = "none")
+  plots[[i]] <- plot
+}
+
+(grid_plot <- grid.arrange(
+    grobs=plots, 
+    ncol = 1,
+    space=0,
+    top = textGrob(sprintf("%s Test Accuracy vs. Train Data Source", TEST_ON), gp=gpar(fontfamily="Times", fontsize=14), vjust=0.4),
+    bottom = textGrob("Train Data Source", gp = gpar(fontfamily="Times", fontsize=14), hjust = 0.5, vjust=-.5),
+    left = textGrob(sprintf("%s Test Accuracy", TEST_ON), rot = 90, gp = gpar(fontfamily = "Times", fontsize=12), vjust = 1.5)
+  )
+)
+
+width = 7; height = 3
+
+ggsave(grid_plot, filename = sprintf("plots/RQ2_test_acc_vs_train_hardness_%s_%s_model-robustness.pdf", METHOD, TEST_ON),
+  width = width, height = height, units = "in")
+
+```
+
+
+```{r bootstrap functions}
+
+bootstrapGRID = function(A, bootTimes=10000, print_p = TRUE, x100=TRUE){
+  # bootstrap difference in metrics between two models, resampling model seeds (columns) and data points
+  # assumes rows of A and B are paired (same data), but columns are not (who knows what seeds mean)
+  # first get rid of all nan rows in both matrices
+  not_all_nan = apply(A, 1, function(row) any(!is.na(row))) 
+  A = A[not_all_nan,]
+  # get rid of all nan cols per matrix
+  A_cols_not_all_nan = apply(A, 2, function(col) any(!is.na(col)))
+  A = A[,A_cols_not_all_nan]
+  A = as.matrix(A)
+  stats <- rep(NA,bootTimes)
+  n_rows <- nrow(A)
+  n_A_cols <- ncol(A)
+  for (bi in 1:bootTimes){
+    row_idx = sample(x=1:n_rows, size=n_rows, replace=TRUE)
+    A_col_idx = sample(x=1:n_A_cols, size=n_A_cols, replace=TRUE)
+    A_sample <- A[row_idx, A_col_idx]
+    res <- mean(A_sample, na.rm=TRUE)
+    stats[bi] <- res
+  }
+  mean <- mean(stats)
+  quantiles <- quantile(stats,c(.025,.975))
+  lb <- quantiles[1]
+  ub <- quantiles[2]
+  p_value <- p_value(stats)
+  if (x100) {mult_factor <- 100} else {mult_factor <- 1}
+  if (print_p){
+    str_format = sprintf('%.2f \u00B1 %.2f (p = %.4f)', mult_factor*mean, mult_factor*(ub-lb)/2, p_value)
+  }
+  else{
+    str_format = sprintf('%.2f \u00B1 %.2f', mult_factor*mean, mult_factor*(ub-lb)/2)
+    # true +/- is \u00B1
+  }
+  return(str_format)
+}
+
+bootstrapDiff = function(A, B, bootTimes=10000, print_p = TRUE, x100=TRUE){
+  # bootstrap difference in metrics between two models, resampling model seeds (columns) and data points
+  # assumes rows of A and B are paired (same data), but columns are not (who knows what seeds mean)
+  # first get rid of all nan rows in both matrices
+  not_all_nan = apply(cbind(A, B), 1, function(row) any(!is.na(row))) 
+  A = A[not_all_nan,]
+  B = B[not_all_nan,]
+  # get rid of all nan cols per matrix
+  A_cols_not_all_nan = apply(A, 2, function(col) any(!is.na(col)))
+  B_cols_not_all_nan = apply(B, 2, function(col) any(!is.na(col)))
+  A = A[,A_cols_not_all_nan]
+  B = B[,B_cols_not_all_nan]
+  A = as.matrix(A)
+  B = as.matrix(B)
+  stats <- rep(NA,bootTimes)
+  n_rows <- nrow(A)
+  n_A_cols <- ncol(A)
+  n_B_cols <- ncol(B)
+  for (bi in 1:bootTimes){
+    row_idx = sample(x=1:n_rows, size=n_rows, replace=TRUE)
+    A_col_idx = sample(x=1:n_A_cols, size=n_A_cols, replace=TRUE)
+    B_col_idx = sample(x=1:n_B_cols, size=n_B_cols, replace=TRUE)
+    A_sample <- A[row_idx, A_col_idx]
+    B_sample <- B[row_idx, B_col_idx]
+    res <- mean(B_sample - A_sample, na.rm=TRUE)
+    stats[bi] <- res
+  }
+  mean <- mean(stats)
+  quantiles <- quantile(stats,c(.025,.975))
+  lb <- quantiles[1]
+  ub <- quantiles[2]
+  p_value <- p_value(stats)
+  if (x100) {mult_factor <- 100} else {mult_factor <- 1}
+  if (print_p){
+    str_format = sprintf('%.2f \u00B1 %.2f (p = %.4f)', mult_factor*mean, mult_factor*(ub-lb)/2, p_value)
+  }
+  else{
+    str_format = sprintf('%.2f \u00B1 %.2f', mult_factor*mean, mult_factor*(ub-lb)/2)
+    # true +/- is \u00B1
+  }
+  return(str_format)
+}
+
+bootstrapBminusAoverCminusA = function(A, B, C, bootTimes=10000, print_p = TRUE, x100=TRUE){
+  # our bootstrap for Supervision Gap Recovered. (B-A)/(C-A), where A is unsupervised, C is hard, and B is easy
+  # assumes rows of A/B/C are paired (same data), but columns are not (who knows what seeds mean)
+  # first get rid of all nan rows in both matrices
+  not_all_nan = apply(cbind(A, B, C), 1, function(row) any(!is.na(row))) 
+  A = A[not_all_nan,]
+  B = B[not_all_nan,]
+  C = C[not_all_nan,]
+  # get rid of all nan cols per matrix
+  A_cols_not_all_nan = apply(A, 2, function(col) any(!is.na(col)))
+  B_cols_not_all_nan = apply(B, 2, function(col) any(!is.na(col)))
+  C_cols_not_all_nan = apply(C, 2, function(col) any(!is.na(col)))
+  A = A[,A_cols_not_all_nan]
+  B = B[,B_cols_not_all_nan]
+  C = C[,C_cols_not_all_nan]
+  A = as.matrix(A)
+  B = as.matrix(B)
+  C = as.matrix(C)
+  stats <- rep(NA,bootTimes)
+  n_rows <- nrow(A)
+  n_A_cols <- ncol(A)
+  n_B_cols <- ncol(B)
+  n_C_cols <- ncol(C)
+  for (bi in 1:bootTimes){
+    row_idx = sample(x=1:n_rows, size=n_rows, replace=TRUE)
+    A_col_idx = sample(x=1:n_A_cols, size=n_A_cols, replace=TRUE)
+    B_col_idx = sample(x=1:n_B_cols, size=n_B_cols, replace=TRUE)
+    C_col_idx = sample(x=1:n_C_cols, size=n_C_cols, replace=TRUE)
+    A_sample <- A[row_idx, A_col_idx]
+    B_sample <- B[row_idx, B_col_idx]
+    C_sample <- C[row_idx, C_col_idx]
+    res <- mean(B_sample - A_sample, na.rm=TRUE) / mean(C_sample - A_sample, na.rm=TRUE)
+    stats[bi] <- res
+  }
+  # remove any Inf values from stats, which occur <1/1000 freq
+  stats <- stats[is.finite(stats)]
+  mean <- mean(stats)
+  quantiles <- quantile(stats,c(.025,.975))
+  lb <- quantiles[1]
+  ub <- quantiles[2]
+  p_value <- p_value(stats)
+  if (x100) {mult_factor <- 100} else {mult_factor <- 1}
+  if (print_p){
+    str_format = sprintf('%.2f \u00B1 %.2f (p = %.4f)', mult_factor*mean, mult_factor*(ub-lb)/2, p_value)
+  }
+  else{
+    str_format = sprintf('%.2f \u00B1 %.2f', mult_factor*mean, mult_factor*(ub-lb)/2)
+    # true +/- is \u00B1
+  }
+  return(str_format)
+}
+
+p_value <- function(betas){
+  # calculate p-value for two-sided difference from 0 test with a bootstrapped distribution of statistics, beta
+  abs_mean_beta = abs(mean(betas))
+  centered_betas = betas - mean(betas)
+  outside_prop = mean(centered_betas < -abs_mean_beta) + mean(centered_betas > abs_mean_beta)
+  return(outside_prop)
+}
+
+
+```
+
+
+```{r RQ1 p-values for individual accs and SGR}
+
+MODEL = 'Llama-2-70b'
+TEST_ON = 'hard'
+bootTimes=100000
+PROBING_METHOD = 'decoding'
+group_vars <- c("MMLU High School vs. College", "ARC Grade Level", "ARC 1/2/3 Difficulty", "ARC Bloom Skill", "StrategyQA Reasoning Steps", "GSM8k Reasoning Steps")
+# group_vars <- "StrategyQA Reasoning Steps"
+# group_vars <- c("GSM8k Reasoning Steps")
+
+var_set <- "main"
+# show_vars <- c("Question Num. Words", "Answer Num. Chars", "MDL (ZS Prompt)", "MDL (Linear Probe)", "MDL (QLoRA)")
+# var_set <- "appendix"
+comparisons <- list( # these are train conditions to compare
+  c("Easy", "Hard"),
+  c("Unsupervised", "Easy")
+)
+
+item_level_accs <- item_level_accs %>%
+  mutate(group_var = paste(dataname, hardness_var_name_nice),
+         group_var = gsub("MMLU-STEM-5", "MMLU", group_var),
+         group_var = gsub("ARC ARC", "ARC", group_var),
+         group_var = gsub("Num. Reasoning", "Reasoning", group_var),
+         ) %>% 
+  filter(n_train %in% c(0, 8, 10, 160))
+
+
+# pairwise comparisons
+for (GROUP_VAR in group_vars){
+  for (comparison in comparisons){
+     A <- item_level_accs %>%
+       filter(model==MODEL,
+              probing_method==PROBING_METHOD | n_train == 0,
+              supervision==comparison[1],
+              hardness_level_value==TEST_ON,
+              group_var==GROUP_VAR
+              )
+     B <- item_level_accs %>%
+       filter(model==MODEL,
+              probing_method==PROBING_METHOD | n_train == 0,
+              supervision==comparison[2],
+              hardness_level_value==TEST_ON,
+              group_var==GROUP_VAR
+              )
+     names(A)[1] <- "id"
+     names(B)[1] <- "id"
+     dataname <- A %>% pull(dataname) %>% unique()
+     A <- A %>%
+       select(id, contains("accuracy")) %>% unique()
+     B <- B %>%
+       select(id, contains("accuracy")) %>% unique()
+     use_idx = intersect(A$id, B$id)
+     A <- A %>% filter(id %in% use_idx)
+     B <- B %>% filter(id %in% use_idx)
+
+     if (dataname == "StrategyQA" & TEST_ON=='hard' & comparison[1]=="Unsupervised"){
+       A <- A[1:427,]
+     }
+     if (dataname == "StrategyQA" & TEST_ON=='all' & comparison[1]=="Unsupervised"){
+       A <- A[1:2290,]
+     }
+
+     acc_A <- as.matrix(A %>% select(contains("accuracy")))
+     acc_B <- as.matrix(B %>% select(contains("accuracy")))
+     diff <- acc_B - acc_A
+     print("effective sample size for diff:")
+     print(sum(apply(diff, 1, function(row) any(!is.na(row)))))
+
+     print(GROUP_VAR)
+     print(comparison[1])
+     print(bootstrapGRID(acc_A, bootTimes = bootTimes))
+     print(comparison[2])
+     print(bootstrapGRID(acc_B, bootTimes = bootTimes))
+     print("Diff between them:")
+     print(bootstrapDiff(acc_A, acc_B, bootTimes = bootTimes))
+  }
+}
+
+# now bootstrap the SGR statistics
+for (GROUP_VAR in group_vars){
+   Easy <- item_level_accs %>%
+     filter(model==MODEL,
+            probing_method==PROBING_METHOD,
+            supervision=="Easy",
+            hardness_level_value==TEST_ON,
+            group_var==GROUP_VAR
+            )
+   Hard <- item_level_accs %>%
+     filter(model==MODEL,
+            probing_method==PROBING_METHOD,
+            supervision=="Hard",
+            hardness_level_value==TEST_ON,
+            group_var==GROUP_VAR
+            )
+   Unsupervised <- item_level_accs %>%
+     filter(model==MODEL,
+            probing_method=="decoding",
+            supervision=="Unsupervised",
+            hardness_level_value==TEST_ON,
+            group_var==GROUP_VAR
+            )
+   dataname <- Easy %>% pull(dataname) %>% unique()
+   Easy <- as.matrix(Easy %>% select(contains("accuracy")))
+   Hard <- as.matrix(Hard %>% select(contains("accuracy")))
+   Unsupervised <- as.matrix(Unsupervised %>% select(contains("accuracy")))
+   recovered <- Easy - Unsupervised
+   gap <- Hard - Unsupervised
+   
+   print(GROUP_VAR)
+   print("SGR point value:")
+   SGR_point = (mean(Easy, na.rm=TRUE) - mean(Unsupervised, na.rm=TRUE)) / (mean(Hard, na.rm=TRUE) - mean(Unsupervised, na.rm=TRUE))
+   print(SGR_point)
+   print("SGR estimate:")
+   print(bootstrapBminusAoverCminusA(Unsupervised, Easy, Hard, x100=FALSE, bootTimes = bootTimes))
+}
+
+```
+
+```{r COST LEARNING CURVES with grid.arrange}
+
+MODEL = "Llama-2-70b"
+TEST_ON = "hard"
+train_levels = c("easy", "hard")
+YLIM = c(80, 95)
+xlabs <- c(10, 20, 40, 80, 160, 320)
+raw_labs <- c(40, 80, 160, 320)
+xbreaks <- log2(xlabs)
+group_vars <- c("ARC Grade Level", "ARC 1/2/3 Difficulty", "ARC Bloom Skill", "MMLU High School vs. College", "StrategyQA Reasoning Steps")
+
+plot_data <- LC_data %>%
+  mutate(test_acc_100=round(100*test_acc, 2), 
+         error_100 = 100*error_bar,
+         group_var = paste(dataname, hardness_var_name_nice),
+         group_var = gsub("MMLU-STEM-5", "MMLU", group_var),
+         group_var = gsub("ARC ARC", "ARC", group_var),
+         group_var = gsub("Num. Reasoning", "Reasoning", group_var),
+         method = paste(probing_method_nice, sprintf("CoT=%s", use_cot), sprintf("n=%s", n_train), sep=" ")) %>%
+  filter(model==MODEL,
+         test_on==TEST_ON,
+         train_on %in% train_levels,
+         group_var %in% group_vars,
+         (probing_method=='learned' & dataname == "StrategyQA") | (dataname != "StrategyQA"),
+         ) %>%
+  select(c(dataname, model, probing_method, group_var, train_on_nice, test_on_nice, n_train, error_100, test_acc_100)) %>%
+  mutate(log_n = log2(n_train))
+
+plots <- list()
+for (i in 1:length(group_vars)){
+  subplot_data <- plot_data %>%
+    filter(group_var == group_vars[i])
+  dataname <- subplot_data %>% pull(dataname) %>% unique()
+  var_name <- group_vars[i]
+  if (dataname == 'ARC'){
+    YLIM = c(80, 90)
+  }
+  if (dataname == 'StrategyQA'){
+    YLIM = c(50, 70)
+    # YLIM = c(50, 75)
+  }
+  if (dataname == 'MMLU-STEM-5'){
+    YLIM = c(40, 55)
+    var_name = "MMLU HS vs. College"
+  }
+  plot <- subplot_data %>%
+    mutate(log_n = ifelse(train_on_nice == "Easy", log_n-1, log_n)) %>%
+    mutate(n_train = ifelse(train_on_nice == "Hard", n_train*2, n_train)) %>%
+    filter(n_train <= 320 & n_train >= 20) %>%
+    filter(n_train >= 40 | probing_method=='learned') %>%
+    ggplot(aes(x=n_train, y=test_acc_100, color=train_on_nice)) +
+    geom_line(linewidth=.65) +
+    coord_cartesian(ylim=YLIM) + 
+    labs(title=var_name,
+         y = "",
+         x = "",
+         color = "Training Data") +
+    scale_x_continuous(breaks=raw_labs, labels = raw_labs) + 
+    scale_fill_manual(values=cbp1, labels = c("Easy", "Hard")) +
+    theme + 
+    theme(axis.text.x = element_text(size=9, color='black', angle=0, hjust=.55),
+          axis.text.y = element_text(size=9),
+          plot.title = element_text(size=10, face='bold'),
+          legend.title = element_text(size=10),
+          legend.text = element_text(size=9),
+          legend.key = element_rect(fill = "white"),
+          panel.spacing = unit(0.5, "lines"))
+  if (length(group_vars) > 1) {plot <- plot + theme(legend.position='none')}
+  plots[[i]] <- plot
+}
+
+(grid_plot <- grid.arrange(
+    grobs=plots, 
+    ncol = 2,
+    top = textGrob("Hard Data 2x Costlier to Label", gp=gpar(fontfamily="Times", fontsize=14), vjust=.3),
+    bottom = textGrob(expression("Training Data" ~italic("Cost")), gp = gpar(fontfamily="Times", fontsize=12), hjust = 0.5, vjust=-.5),
+    left = textGrob("Hard Test Accuracy", rot = 90, gp = gpar(fontfamily = "Times", fontsize=13), vjust = 1.5)
+  )
+)
+ggsave(grid_plot, filename = sprintf("plots/RQ3_all_learning_curves_COST_%s_num_vars-%s.pdf", MODEL, length(group_vars)),
+  width = 4.2, height = 6, units = "in")
+
+
+```
+
+```{r NOISED LABELS PLOT, fig.height=4, fig.width=6}
+
+MODEL == 'Llama-2-70b'
+supervision_levels = c('Easy', 'Hard')
+METHOD = 'learned' 
+
+plot_data <- noise_data %>%
+  mutate(test_acc_100=round(100*test_acc, 2),
+        label_str=round(100*test_acc, 1),
+         error_100 = 100*error_bar,
+        noise_labels_p = ifelse(train_on=='hard', noise_labels_p/2, noise_labels_p), # we noised hard data at a rate of 2p, vs p for easy data
+        ) %>%
+  filter(test_on %in% c("hard"),
+         supervision %in% supervision_levels,
+         model==MODEL,
+         probing_method==METHOD | n_train == 0) %>%
+  select(dataname, test_dataname, noise_labels_p, train_on, test_on, n_train, supervision, test_acc_100, label_str, error_100, n_test, sample_size) %>%
+  unique()
+
+# manually add ZS rows to the table for other noising levels
+if ("Unsupervised" %in% supervision_levels){
+  ZS_row <- plot_data[1,]
+  for (noise_p in c("0.05", "0.1", "0.2", "0.3")){
+    ZS_row$noise_labels_p <- noise_p
+    plot_data <- rbind(plot_data, ZS_row)
+  }
+}
+
+dodge_width <- 0
+(barplot <- 
+plot_data %>%
+  ggplot(aes(x=noise_labels_p, y=test_acc_100, color=supervision, label=label_str)) +
+  geom_line(linewidth=.75) +
+  geom_text(position = position_dodge(width = dodge_width),
+            size=3.7,
+            vjust = -0.5,    # nudge above top of bar
+            hjust = 0.6,
+            family="Times",
+            face='bold',
+            ) +
+  labs(
+      title = sprintf("What If Hard Data is 2x as Noisy as Easy Data?"),
+      x = expression("Noise Probability" ~italic("p") ~"For Easy Data"),
+      y = "Hard\nTest\nAcc",
+      color = "Train Data",
+    ) + 
+  coord_cartesian(ylim=c(35, 55)) + 
+  scale_fill_manual(values=cbp1[2:3]) +
+  theme + 
+  theme(axis.text.x = element_text(size=11, color='black', angle=0, hjust=.55),
+        axis.text.y = element_text(size=11, color='black'),
+        axis.title.x = element_text(size=13, color='black', angle=0, vjust=-.3),
+        axis.title.y = element_text(size=12, color='black', angle=0, vjust=.51, hjust=0),
+        plot.title = element_text(size=14, hjust=0.5),
+        legend.title = element_text(size=12),
+        legend.text = element_text(size=10),
+        legend.position = c(.85,.78),
+        legend.background = element_rect(fill = "white", colour = "#4D4D4D", size = 0.3, linetype = "solid"),
+        legend.box.background = element_rect(color = "black", size = 0.5),
+        legend.key = element_rect(fill = "white")
+  )
+)
+
+ggsave(barplot, filename = sprintf("plots/RQ3_noise_data_%s.pdf", METHOD),
+  width = 4.4, height = 3, units = "in")
+
+
+```
+
+
+```{r RQ3 scaling analysis, fig.height=2, fig.width=5}
+
+supervision_levels = c('Unsupervised', 'Easy', 'Hard')
+METHOD = 'decoding'
+dataset <- "MMLU-STEM-5"
+YLIM = c(20, 70)
+
+plot_data <- boot_avg_data %>%
+  mutate(test_acc_100 = 100*test_acc,
+         group_var = paste(dataname, hardness_var_name_nice),
+         label_str=round(test_acc_100, 1),
+         ) %>%
+  filter(test_on %in% c("hard"),
+         supervision %in% supervision_levels,
+         probing_method==METHOD | n_train == 0,
+         dataname==dataset,
+         hardness_var_name == "human_hardness",
+         )
+
+dodge_width <- .85
+(barplot <- 
+plot_data %>%
+  ggplot(aes(x=supervision, y=test_acc_100, fill=supervision, label=label_str)) +
+  geom_bar(stat = "identity", position = "dodge", width=dodge_width) +
+  geom_text(position = position_dodge(width = dodge_width),
+            size=3, 
+              vjust = -0.5,    # nudge above top of bar
+            family="Times",
+            ) +
+  labs(
+      title = expression("Easy-to-Hard Generalization Is Similar Across Model Sizes"),
+      x = "",
+      y = "Hard Test Acc\n(MMLU)",
+      fill = "Train Data",
+    ) + 
+  coord_cartesian(ylim=YLIM) +
+  scale_fill_manual(values=cbp1, labels = supervision_levels) +
+  facet_rep_wrap(. ~ model_nice, ncol=3, repeat.tick.labels="bottom") +
+  theme + 
+  theme(axis.text.x = element_text(size=9, color='black', angle=0, hjust=.55),
+        axis.title.y = element_text(size = 10, angle=0, vjust=.5),
+        legend.title = element_text(size=10),
+        legend.text = element_text(size=9),
+        legend.key = element_rect(fill = "white"),
+        strip.text.x = element_text(angle=0, face="bold", size=10, hjust=.5),
+        panel.spacing = unit(0.5, "lines"))
+)
+
+ggsave(barplot, filename = sprintf("plots/RQ4_scaling_%s_%s.pdf", dataset, METHOD),
+  width = 7.7, height = 2.2, units = "in")
+
+```
+```{r RQ3 train-test diff scaling analysis, fig.height=4, fig.width=7}
+
+MODEL = "Llama-2-70b"
+train_levels = c('easy', 'medium', 'hard')
+METHOD = 'decoding'
+group_vars <- c("ARC Grade Level", "ARC 1/2/3 Difficulty", "ARC Bloom Skill", "StrategyQA Reasoning Steps", "GSM8k Reasoning Steps")
+
+plot_data <- boot_avg_data %>%
+  mutate(label_str=round(100*test_acc, 1),
+         test_acc_100 = 100*test_acc,
+         hardness_var_name_nice = gsub("ARC ", "", hardness_var_name_nice),
+         hardness_var_name_nice = gsub("Num. ", "", hardness_var_name_nice),
+         group_var = paste(dataname, hardness_var_name_nice)) %>%
+  filter(test_on %in% c("hard"),
+         train_on %in% train_levels,
+         model==MODEL,
+         (n_train == 160 & probing_method %in% c("learned", "finetuned")) | n_train %in% c(0, 8, 10) & probing_method %in% c("decoding"),
+         probing_method==METHOD,
+         use_cot==TRUE & dataname %in% c("StrategyQA", "GSM8k") | (use_cot==FALSE & dataname %in% c("ARC", "MMLU-STEM-5")),
+         )
+
+dodge_width <- .85
+plots <- list()
+group_var <- group_vars[1]
+for (i in 1:length(group_vars)){
+  subplot_data <- plot_data %>%
+    filter(group_var == group_vars[i])
+  dataname <- subplot_data %>% pull(dataname) %>% unique()
+  var_name <- group_vars[i]
+  if (dataname == 'ARC'){
+    # YLIM = c(80, 95)
+    YLIM = c(75, 95)
+  }
+  if (dataname == 'StrategyQA'){
+    # YLIM = c(60, 80)
+    YLIM = c(50, 80)
+  }
+  if (dataname == 'MMLU-STEM-5'){
+    # YLIM = c(40, 60)
+    YLIM = c(45, 65)
+  }
+  if (dataname == 'GSM8k'){
+    # YLIM = c(9, 35)
+    YLIM = c(9, 35)
+  }
+  plot <- 
+ subplot_data %>%
+  ggplot(aes(x=train_on_nice, y=test_acc_100, fill=train_on_nice, label=label_str)) +
+  geom_bar(stat = "identity", position = "dodge", width=dodge_width) +
+  geom_text(position = position_dodge(width = dodge_width),
+            size=3, 
+              vjust = -0.5,    # nudge above top of bar
+            family="Times",
+            ) +
+  labs(
+      title = var_name,
+      x = "",
+      y = "",
+      fill = "",
+    ) + 
+  coord_cartesian(ylim=YLIM) + 
+  scale_fill_manual(values=cbp1[4:6], labels = c("Easy", "Medium", "Hard")) +
+  theme + 
+  theme(axis.text.x = element_text(size=7, color='black', angle=0, hjust=.55),
+        legend.title = element_text(size=10),
+        legend.text = element_text(size=9),
+        legend.key = element_rect(fill = "white"),
+        legend.position = "none",
+        panel.spacing = unit(0.5, "lines")
+)
+  plots[[i]] <- plot
+}
+
+(grid_plot <- grid.arrange(
+    grobs=plots, 
+    ncol = 3,
+    space=0,
+    top = textGrob(expression("Hard Test Performance As a Function of Train Data Hardness"), gp=gpar(fontfamily="Times", fontsize=14), vjust=.4),
+    bottom = textGrob("Train Data Source", gp = gpar(fontfamily="Times", fontsize=13), hjust = 0.5, vjust=-.5),
+    left = textGrob("Hard Test Accuracy", rot = 90, gp = gpar(fontfamily = "Times", fontsize=13), vjust = 1.5)
+  )
+)
+
+ggsave(grid_plot, filename = sprintf("plots/RQ4_train-test-diff_grid_%s.pdf", METHOD),
+  width = 7, height = 4, units = "in")
+
+```
+
+```{r RQ3 scaling with train-test diff for third_grade_to_college, across methods, fig.height=2, fig.width=3.5}
+
+MODEL == 'Llama-2-70b'
+
+plot_data <- third_grade_to_college %>%
+  mutate(test_acc_100=round(100*test_acc, 2),
+        label_str=round(100*test_acc, 1),
+         error_100 = 100*error_bar) %>%
+  filter(test_on %in% c("hard"),
+         ! (dataname == 'ARC' & grepl('QLoRA', probing_method_nice)),
+         ! (dataname == 'ARC' & grepl('Linear', probing_method_nice)),
+         model==MODEL) %>%
+  mutate(
+         supervision = ifelse(n_train == 0, 'Unsupervised',
+                       ifelse(dataname == 'ARC' & train_on == 'easy', '3rd Grade',
+                       ifelse(dataname == 'ARC' & train_on == 'hard', '8th Grade',
+                       ifelse(dataname == 'ai2_arc_all' & train_on == 'easy', '3rd Grade',
+                       ifelse(dataname == 'ai2_arc_all' & train_on == 'hard', '8th Grade',
+                       ifelse(dataname == 'MMLU-STEM-5' & train_on == 'easy', 'High School',
+                       ifelse(dataname == 'MMLU-STEM-5' & train_on == 'hard', 'College', 'NA'
+                             ))))))),
+         supervision = factor(supervision, levels=c("Unsupervised", "3rd Grade", "8th Grade", "High School", "College")),
+         ) %>%
+  select(dataname, probing_method_nice, test_dataname, train_on, test_on, n_train, supervision, test_acc_100, label_str, error_100, n_test, sample_size)
+
+ZS_row <- plot_data %>% filter(n_train == 0)
+for (noise_p in c("Linear Probe", "QLoRA")){
+  ZS_row$probing_method_nice <- noise_p
+  plot_data <- rbind(plot_data, ZS_row)
+}
+
+dodge_width <- .85
+(barplot <- 
+plot_data %>%
+  ggplot(aes(x=supervision, y=test_acc_100, fill=supervision, label=label_str)) +
+  geom_bar(stat = "identity", position = "dodge", width=dodge_width) +
+  geom_text(position = position_dodge(width = dodge_width),
+            size=3.2, 
+              vjust = -0.5,    # nudge above top of bar
+            family="Times",
+            ) +
+  labs(
+      title = expression("Hard Test Performance As a Function of Training Hardness"),
+      x = "Train Data",
+      y = "Hard Test Acc\n(MMLU)",
+      fill = "Train Data Source",
+    ) + 
+  coord_cartesian(ylim=c(40, 65)) +
+  scale_fill_manual(values=c(cbp1[1], cbp1[4:8]), labels = c("Unsupervised", "3rd Grade", "8th Grade", "High School", "College")) +
+  facet_wrap(. ~ probing_method_nice) +
+  theme + 
+  theme(
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size=10, color='black'),
+        axis.title.x = element_text(size=12, color='black', angle=0, vjust=-.3),
+        axis.title.y = element_text(size = 11, angle=0, vjust=.5),
+        plot.title = element_text(size=14, hjust=0.5),
+        legend.title = element_text(size=10),
+        legend.text = element_text(size=9),
+        legend.key = element_rect(fill = "white"),
+        strip.text.x = element_text(angle=0, face="bold", size=10, hjust=.5),
+        )
+)
+
+ggsave(barplot, filename = sprintf("plots/RQ4_train-test-diff_3rd-to-college.pdf"),
+  width = 8.4, height = 2.2, units = "in")
+
+```
+
+```{r hardness var histograms}
+
+# either get data_id_to_hardness_values from reading the datasets with hardness values or by refashioning it from other item_level_accs runs that have recoded hardness values
+names(item_level_accs)[1] <- "id"
+names(all_to_all_item_accs)[1] <- "id"
+data_id_to_hardness_values <- item_level_accs %>%
+  select(dataname, id, hardness_value, hardness_level_value, hardness_var_name_nice) %>%
+  mutate(hardness_value = ifelse(hardness_var_name_nice == "Num. Reasoning Steps" & dataname == 'GSM8k', hardness_value-1, hardness_value),
+         hardness_var_name_nice = gsub("ARC ", "", hardness_var_name_nice),
+         hardness_var_name_nice = gsub("Num. ", "", hardness_var_name_nice),
+         hardness_var_name_nice = gsub("High School", "HS", hardness_var_name_nice),
+         
+         group_var = paste(dataname, hardness_var_name_nice),
+         group_var = gsub("MMLU-STEM-5", "MMLU", group_var)) %>%
+  unique() %>%
+  filter(!grepl("GSM8k MDL", group_var),
+         !grepl("Reasoning Words", group_var),
+         )
+
+(plot <-  ggplot(data_id_to_hardness_values, aes(x = hardness_value)) +
+    geom_histogram(fill = "#56B4E9", color = "black") + 
+    labs(
+      x = "",
+      y = "",
+      title = ""
+    ) + 
+    facet_wrap(~ group_var, scales = "free") + 
+    theme + 
+    theme(text = element_text(size=10, family="serif"),
+        axis.text = element_text(size=11, color='black'),
+        plot.title = element_text(face="bold", size=13),
+        axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        legend.position="none"))
+
+
+ggsave(plot, filename = sprintf("plots/hardness_var_histograms.pdf"),
+  width = 11, height = 8, units = "in")
+
+```
