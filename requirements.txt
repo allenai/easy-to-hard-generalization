@@ -1,0 +1,20 @@
+numpy==1.24.2
+torch==2.0.0
+transformers==4.36.2
+accelerate==0.23.0
+pandas==1.5.3
+scipy
+jsonlines
+deepspeed==0.8.3
+nvidia-ml-py3
+matplotlib==3.7.1
+datasets==2.12.0
+pynvml==11.5
+seaborn==0.12.2
+einops==0.6.1
+peft==0.5.0
+bitsandbytes==0.41.0
+sentencepiece==0.1.99
+tiktoken==0.5.2
+transformers_stream_generator==0.0.4
+# promptsource==0.2.3
