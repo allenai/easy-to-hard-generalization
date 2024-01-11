@@ -12,7 +12,7 @@ Below, we describe how to replicate the main experimental results in our paper.
 
 We begin with a few examples of experiments that one should be able to run with the codebase. Note to use Llama-2 models, the `llama2_path` variable must be set in `utils/utils.py`. 
 
-### Run llama-7b on ARC Challenge test with a zero-shot prompt
+#### Run llama-7b on ARC Challenge test with a zero-shot prompt
 
 Note that you must supply the `--model_dir` and `--cache_dir` args for saving/storing models by setting the `MODEL_DIR` and `CACHE_DIR` environment variables. Lowering the eval batch size (`-ebs`) to 4 (the minimum value given that ARC is 4-way multiple-choice) should help fit onto a smaller GPU.
 
@@ -20,17 +20,19 @@ Note that you must supply the `--model_dir` and `--cache_dir` args for saving/st
 python main.py --model huggyllama/llama-7b --do_eval true -llm true --probing_style decoding --dataset ai2_arc/ARC-Challenge  --hardness_var_name NA --specific_prompt 0040 -pb 1 -np 1 --stratify_hardness false --k_shot 0 -ebs 8 --all_data_to_test true --model_dir $MODEL_DIR --cache_dir $CACHE_DIR
 ```
 
-### Run llama-13b on our combined ARC data with a zero-shot prompt
+#### Run llama-13b on our combined ARC data with a zero-shot prompt
 
 ```
 python main.py --model huggyllama/llama-13b --do_eval true -llm true --probing_style decoding --dataset ai2_arc  --hardness_var_name NA --specific_prompt 0040 -pb 1 -np 1 --stratify_hardness false --k_shot 0 -ebs 10 --all_data_to_test true --model_dir $MODEL_DIR --cache_dir $CACHE_DIR
 ```
 
-### Run Mixtral-8x7B on college level MMLU-STEM-5 data with a 10-shot prompt containing high school examples, using 5 random seeds
+#### Run Mixtral-8x7B on college level MMLU-STEM-5 data with a 10-shot prompt containing high school examples, using 5 random seeds
 
 ```
 python main.py --model mistralai/Mixtral-8x7B-v0.1 --do_eval true -llm true --probing_style decoding --dataset mmlu_STEM-5 --hardness_var_name human_hardness --specific_prompt 0040 -pb 5 -np 1 --stratify_hardness true --train_on easy --test_on hard --k_shot 0 -ebs 10 --all_data_to_test true --model_dir $MODEL_DIR --cache_dir $CACHE_DIR
 ```
+
+### Paper Research Question Experiments
 
 Now we describe how to replicate the main results in our paper using the `run_jobs.py` file. In general, you have to edit the `use_models` and `use_methods` in this file in order to *not* run experiments across Llama-2-7b, Llama-2-13b, Llama-2-70b, and all relevant training method including ICL, ICL+CoT, linear probing, QLoRA, and QLoRA+CoT. Note that using `Llama-2-70b` requires four 48gb gpus to load in 8bit quantization.
 
