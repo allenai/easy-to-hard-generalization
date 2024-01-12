@@ -370,7 +370,7 @@ def write_datasets_with_known_hardness(args, request, data_dir, seed, make_hardn
         # combine data
         combined_datasets = pd.concat(combined_datasets)
         # join with our metadata
-        metadata_path = os.path.join(data_dir, 'arc-challenge-easy-annotations.json')
+        metadata_path = os.path.join('data', 'arc-challenge-easy-annotations.json')
         with open(metadata_path, 'r') as f:
             arc_metadata = json.load(f)
             records = []
