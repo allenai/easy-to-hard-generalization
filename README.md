@@ -1,4 +1,4 @@
-This is the codebase for the paper [The Unreasonable Effectiveness of Easy Training Data for Easy-To-Hard Generalization](https://peterbhase.github.io/files/easy-to-hard-generalization.pdf).
+This is the codebase for the paper [The Unreasonable Effectiveness of Easy Training Data for Hard Tasks](https://peterbhase.github.io/files/easy-to-hard-generalization.pdf).
 
 ## Install Requirements
 
