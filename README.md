@@ -1,16 +1,16 @@
 This is the codebase for the paper [The Unreasonable Effectiveness of Easy Training Data for Hard Tasks](https://peterbhase.github.io/files/easy-to-hard-generalization.pdf).
 
-## Install Requirements
+Below, we describe how to replicate the main experimental results in our paper. 
+
+### Experiment Commands
+
+We begin with a few examples of experiments that one should be able to run with the codebase. Note to use Llama-2 models, the `llama2_path` variable must be set in `utils/utils.py`. 
+
+#### Install Requirements
 
 ```
 pip install -r requirements.txt
 ```
-
-### Experiment Commands
-
-Below, we describe how to replicate the main experimental results in our paper. 
-
-We begin with a few examples of experiments that one should be able to run with the codebase. Note to use Llama-2 models, the `llama2_path` variable must be set in `utils/utils.py`. 
 
 #### Run llama-7b on ARC Challenge test with a zero-shot prompt
 
