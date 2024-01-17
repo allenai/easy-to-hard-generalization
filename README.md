@@ -29,7 +29,7 @@ python main.py --model huggyllama/llama-13b --do_eval true -llm true --probing_m
 #### Run Mixtral-8x7B on college level MMLU-STEM-5 data with a 10-shot prompt containing high school examples, using 5 random seeds
 
 ```
-python main.py --model mistralai/Mixtral-8x7B-v0.1 --do_eval true -llm true --probing_method decoding --dataset mmlu_STEM-5 --hardness_var_name human_hardness --specific_prompt 0040 -pb 5 -np 1 --stratify_hardness true --train_on easy --test_on hard --k_shot 0 -ebs 10 --all_data_to_test true --model_dir $MODEL_DIR --cache_dir $CACHE_DIR
+python main.py --model mistralai/Mixtral-8x7B-v0.1 --do_eval true -llm true --probing_method decoding --dataset mmlu_STEM-5 --hardness_var_name human_hardness --specific_prompt 0040 -pb 5 -np 1 --stratify_hardness true --train_on easy --test_on hard --k_shot 10 -ebs 8 --all_data_to_test true --model_dir $MODEL_DIR --cache_dir $CACHE_DIR
 ```
 
 ### Paper Research Question Experiments
