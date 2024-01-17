@@ -592,8 +592,7 @@ class Probe(nn.Module):
                 'targets_mask': batch['targets_mask'],
                 'answer_choices': batch['answer_choices'],
             }
-            if not self.args.accelerate:
-                utils.move_kwargs_to_gpu(main_kwargs)
+            utils.move_kwargs_to_gpu(main_kwargs)
             if compute_mc_probs:
                 num_answers_list = batch['num_answers_list']
                 assert not all(x==1 for x in num_answers_list), "Trying to compute mc probs but num_answers are all 1"
@@ -615,8 +614,7 @@ class Probe(nn.Module):
                     'labels': batch['input_ids'],
                     'targets_mask': batch['targets_mask'],
                 }
-                if not self.args.accelerate:
-                    utils.move_kwargs_to_gpu(main_kwargs)
+                utils.move_kwargs_to_gpu(main_kwargs)
                 _, hidden_states_dict = LM_utils.compute_probs_from_batch(self.model, main_kwargs, return_value='probs', return_hidden_states=True)
                 hidden_states = LM_utils.get_last_token_hidden_states(hidden_states_dict, 
                                                                       max_num_answers = max(batch['num_answers_list']),

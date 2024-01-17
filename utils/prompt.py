@@ -4,7 +4,6 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 import data_utils
-from promptsource.templates import DatasetTemplates
 
 class Prompt:
     '''
@@ -94,6 +93,7 @@ class Prompt:
         self.default_label_idx = 0
         # set/load the collection of prompts to be used
         if self.prompt_source == "promptsource":
+            raise NotImplementedError("Must install promptsource as follows: git clone https://github.com/bigscience-workshop/promptsource.git\ncd promptsource\nremove the python requirement in setup.py\npip install -e . \n\nThen adjust the code to import promptsource and remove this NotImplementedError")
             self.promptsource_dict = self.load_promptsource_prompts(num_prompts=num_prompts)
             self.dataname_to_prompt_ids = {dataname: list(range(len(prompts))) for dataname, prompts in self.promptsource_dict.items()}
         elif self.prompt_source == "custom":

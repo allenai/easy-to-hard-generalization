@@ -469,26 +469,23 @@ def postprocess_hardness_scores(args, datasets, verbose=False):
         col_order = sorted(list(hardness_data.columns))
         hardness_data = hardness_data[col_order]
         corr_matrix = hardness_data.corr(method='spearman').round(3)
-        # corr_matrix = corr_matrix.dropna() # need to drop only a single empty row and column
         if verbose:
             print(f"{dataname} | Correlation matrix for hardness scores across models (rank correlation):")
             print(corr_matrix.round(2))
-        save_path = os.path.join('result_sheets', f"{args.dataset}_corr_matrix_{args.short_model_name}.csv")
-        corr_matrix.to_csv(save_path)
-        # plot corr matrix
-        save_name = f"{args.dataset}_corr_plot_{args.short_model_name}"
-        plotting_utils.plot_corr_matrix(corr_matrix, save_name, title = f"{args.dataset} correlation matrix")
+        if len(corr_matrix) > 1:
+            save_path = os.path.join('result_sheets', f"{args.dataset}_corr_matrix_{args.short_model_name}.csv")
+            corr_matrix.to_csv(save_path)
+            # plot corr matrix
+            save_name = f"{args.dataset}_corr_plot_{args.short_model_name}"
+            plotting_utils.plot_corr_matrix(corr_matrix, save_name, title = f"{args.dataset} correlation matrix")
             
-        # plot hardness distributions, first a facet wrap plot then individual plots
-        plotting_utils.plot_hardness_distributions_facet(hardness_data[available_columns], 
-                    plot_name=f"{dataname}_hardness_distribution_facet_{args.short_model_name}",
-        )
-        for col in available_columns:
-            plotting_utils.plot_hardness_distribution(hardness_data[col], name=f"{dataname}_hardness_distribution_{col}")
-
-        # ad-hoc answer_num_chars
-        probing_data['answer_num_chars'] = probing_data.answer_text.apply(lambda x : len(x)).copy()
-            
+            # plot hardness distributions, first a facet wrap plot then individual plots
+            plotting_utils.plot_hardness_distributions_facet(hardness_data[available_columns], 
+                        plot_name=f"{dataname}_hardness_distribution_facet_{args.short_model_name}",
+            )
+            for col in available_columns:
+                plotting_utils.plot_hardness_distribution(hardness_data[col], name=f"{dataname}_hardness_distribution_{col}")
+     
         # save data
         save_name = f"{dataname}_probing-data_sd{args.seed}.json"
         save_path = os.path.join(args.data_dir, save_name)
@@ -1015,7 +1012,7 @@ if __name__ == '__main__':
     parser.add_argument("--finetuned_epochs", "-fe", default = -1, type=int, 
                             help='Automatically set in utils.standardize_optimization_configs if left at -1')
     # hardness model + training parameters
-    parser.add_argument("--hardness_method", '-hm', default='learned', choices=['decoding', 'learned', 'finetuned'], 
+    parser.add_argument("--hardness_method", '-hm', default='decoding', choices=['decoding', 'learned', 'finetuned'], 
                         help='method for computing model-based hardness scores. decoding computes autoregressive probability. learned probe is a parametric probe on hidden states. finetuned is QLoRA')
     parser.add_argument("--hardness_probe_model", default='linear', choices=['linear', 'MLP', 'transformer'], help='only relevant if probing_method=learned')
     parser.add_argument("--hardness_multitask", default = False, type=str2bool, help = 'hardness model is trained multi-task on all passed training datasets')
@@ -1115,6 +1112,8 @@ if __name__ == '__main__':
         os.mkdir(args.output_dir)
     if not os.path.exists(args.data_dir):
         os.mkdir(args.data_dir)
+    if not os.path.exists('result_sheets'):
+        os.mkdir('result_sheets')
 
     # set probing configs
     args.short_model_name = short_model_name = utils.shorten_model_name(args.model)

@@ -96,7 +96,7 @@ class MCTextDataset(Dataset):
                 reasoning_chains.append(datapoint.reasoning_target)
         # define label strs
         if self.letter_labels:
-            flat_answers = [['A', 'B', 'C', 'D'][:len(answer_choices)] for answer_choices in answers_list]
+            flat_answers = [['A', 'B', 'C', 'D', 'E'][:len(answer_choices)] for answer_choices in answers_list]
             flat_answers = list(chain(*flat_answers))
             label_strs = [letter_answer_choices[label_idx] for label_idx in label_idx_list]
         else:
@@ -237,7 +237,7 @@ def standardize_column_names(dataname, df):
     elif dataname == 'ai2_arc' or 'ARC' in dataname:
         df['input_text'] = df['question']
         df['answer_choices'] = df['choices'].apply(lambda x: x['text'])
-        df['label_idx'] = df['answerKey'].apply(lambda x: ['A', 'B', 'C', 'D'].index(x) if not x in ['1', '2', '3', '4'] else ['1', '2', '3', '4'].index(x))
+        df['label_idx'] = df['answerKey'].apply(lambda x: ['A', 'B', 'C', 'D', 'E'].index(x) if not x in ['1', '2', '3', '4', '5'] else ['1', '2', '3', '4', '5'].index(x))
     # add answer_text
     df['answer_text'] = [list(df['answer_choices'].iloc[i])[answer] for i, answer in enumerate(df.label_idx.values)]
     # add A/B/C/D labels
@@ -499,11 +499,13 @@ def write_datasets_with_known_hardness(args, request, data_dir, seed, make_hardn
     # save hardness/probing splits
     if not make_hardness_split:
         save_path = os.path.join(data_dir, probing_save_name)
-        all_data = all_data.drop_duplicates(subset='id')
+        if 'arc' in request.lower():
+            all_data = all_data.drop_duplicates(subset='id')
         all_data.to_json(save_path, orient='records')
     else:
+        if 'arc' in request.lower():
+            all_data = all_data.drop_duplicates(subset='id')
         all_idx = np.arange(len(all_data))
-        all_data = all_data.drop_duplicates(subset='id')
         hardness_idx = data_rng.choice(all_idx, size=1000, replace=False)
         hardness_split = all_data.iloc[hardness_idx,:]
         probing_idx = np.setdiff1d(all_idx, hardness_idx)
@@ -564,7 +566,7 @@ def write_datasets(request, sample_size, data_dir, seed, make_hardness_split=Tru
             continue
 
         load_name = get_load_name(dataname)
-        raw_dataset = datasets.load_dataset(*load_name, cache_dir=data_dir)
+        raw_dataset = datasets.load_dataset(*load_name, cache_dir=data_dir, ignore_verifications=True)
         if verbose:
             print(dataname)
             for key in raw_dataset.keys():
@@ -582,6 +584,9 @@ def write_datasets(request, sample_size, data_dir, seed, make_hardness_split=Tru
         elif load_name[1] == 'ARC-Challenge':
             gather_splits = ["test"]
         all_data = pd.concat([raw_dataset[split].to_pandas() for split in gather_splits])
+        if 'arc' in dataname.lower():
+            all_data = all_data.drop_duplicates(subset='id')
+            all_data = standardize_column_names('ai2_arc', all_data)
         
         # sample up to 1000 points for making probing datasets
         have_points = len(all_data)

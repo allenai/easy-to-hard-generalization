@@ -1,7 +1,7 @@
 import argparse
 import os
 import utils
-from utils import str2bool
+from utils.utils import str2bool
 import pandas as pd
 import globals
 import time
@@ -257,10 +257,8 @@ def write_hidden_states(args):
     exp_specific_args = f" --write_hidden_states true --hardness_bootstraps 1"
     # for dataname in all_datasets:
     for dataname in [args.dataset]:
-        # for model in globals.hardness_models + llama_models:
-        # for model in globals.one_gpu_models:
-        models = ['Llama-2-70b']
-        # llama_models = ['Llama-2-7b', 'Llama-2-13b', 'Llama-2-70b', 'Llama-2-7b-chat', 'Llama-2-13b-chat', 'Llama-2-70b-chat']
+        models = globals.hardness_models + globals.llama_models
+        # models = ['Llama-2-70b']
         for model in models:
             method_config = method_configs['learned_CoT=False']
             data_x_method_config = data_x_method_configs[dataname + '_CoT=False']
@@ -712,10 +710,10 @@ if __name__ == "__main__":
     parser.add_argument("--hardness_var_name", default='NA', help='name of hardness column for data with human hardness metadata')
     parser.add_argument("--optimize_weights", default='LORA', help='name of hardness column for data with human hardness metadata')
     # save dirs
-    parser.add_argument("--data_dir", default='/net/nfs.cirrascale/aristo/peterh/data', type=str, help='')
-    parser.add_argument("--model_dir", default='/net/nfs.cirrascale/aristo/peterh/models', type=str, help='')
-    parser.add_argument("--cache_dir", default='/net/nfs.cirrascale/aristo/peterh/models', type=str, help='')
-    parser.add_argument("--output_dir", default='/net/nfs.cirrascale/aristo/peterh/outputs', type=str, help='')
+    parser.add_argument("--data_dir", default='data', type=str, help='')
+    parser.add_argument("--model_dir", type=str, help='')
+    parser.add_argument("--cache_dir", type=str, help='')
+    parser.add_argument("--output_dir", default='outputs', type=str, help='')
     # parser.add_argument("--output_dir", default='~/latent-knowledge/ours/outputs', type=str, help='')
     # control flow
     parser.add_argument("--run_jobs", '-rj', default=True, type=str2bool)
